@@ -1,0 +1,190 @@
+body {
+  --bs-body-font-family: 'Overpass';
+  --bs-body-color: #444;
+  font-size: 15px;
+}
+
+@font-face {
+  font-family: 'Overpass';
+  src: url('/webfonts/overpass.ttf') format("truetype-variations");
+  font-weight: 1 999;
+}
+
+.container {
+  margin-left: 0!important;
+  margin-right: 0!important;
+}
+
+.full-height {
+  min-height: 100vh;
+}
+
+
+article li p {
+  margin-bottom: 0;
+}
+
+header {
+  font-size: 32px;
+  font-weight: 700;
+  padding-left: 20px;
+  margin-top: 50px;
+}
+
+.subheader {
+  margin-bottom: 0;
+  padding: 0;
+  margin-left: 0px;
+  font-size: 18px;
+  font-weight: 300;
+  line-height: 1.3;
+  font-stretch: condensed;
+}
+
+article > h4 {
+  border-bottom: 1px solid #ddd;
+}
+
+pre {
+  display: block;
+  width: 90%;
+  margin: 30px auto;
+  background: #222;
+  color: #fff;
+  padding: 10px 15px;
+  border-radius: 4px;
+  overflow-x: auto;
+  font-size: 1em;
+}
+
+code {
+  font-weight: 600;
+  margin: 0;
+  padding: 0;
+}
+
+.highlight-0 {
+  color: #888;  
+}
+
+.highlight-1 { 
+  color: #6688cc;
+}
+
+.highlight-2 {
+  color: #8866cc;
+  font-weight: bold;
+}
+
+.highlight-3 {
+  color: #8866cc;
+}
+
+.highlight-4 {
+  color: #6688cc;
+  font-weight: bold;
+}
+
+.highlight-5 {
+  color: #ccc;
+}
+
+.highlight-6 {
+  color: #eee; 
+}
+
+.highlight-7 {
+  color: #ccc; 
+}
+
+.highlight-8 {
+  color: #cccc33; 
+}
+
+.highlight-9 {
+  color: #ffff44; 
+}
+
+.highlight-10 {
+  color: #33cc33; 
+}
+
+.highlight-11 {
+  color: #33cc33; 
+  font-weight: bold;
+}
+
+.highlight-12 {
+  color: #eee; 
+  font-style: italic;
+}
+
+.highlight-13 {
+  color: #fff; 
+  font-weight: bold;
+}
+
+.highlight-14 {
+  color: #fff; 
+  font-weight: bold;
+}
+
+.highlight-15 {
+  color: #ff99ff; 
+}
+
+.highlight-16 {
+  color: #ff99ff; 
+  font-weight: bold;
+}
+
+.highlight-17 {
+  color: #ff99ff; 
+  font-style: italic;
+}
+
+.highlight-18 {
+  color: #ff8800; 
+}
+
+.highlight-19 {
+  color: #ff3333; 
+}
+
+.highlight-20 {
+  color: #33ff00; 
+}
+
+#menu {
+  display: block;
+  padding-top: 150px;
+  margin-left: 10%;
+}
+
+#toc {
+  padding-top: 120px;
+  padding-left:20px;
+}
+
+.toc-item {
+  display: block;
+  padding-left: 20px;
+  border-left: 5px solid #ddd; 
+}
+
+
+.toc-item a.active {
+  font-weight: bold;
+}
+
+hr {
+  border: 0;
+  border-top: 1px solid #999;
+  width: 60%;
+  margin: 20px auto;
+}
+
+.alert p:last-child {
+  margin-bottom: 0;
+}
+
