@@ -238,7 +238,13 @@ impl Document {
             Node::MdxTextExpression(_) => "".to_string(),
             Node::FootnoteReference(_) => "".to_string(),
             Node::Html(_) => "".to_string(),
-            Node::Image(_) => "".to_string(),
+            Node::Image(img) => {
+                format!(
+                    r#"<img class="img-fluid" src="{}" title="{}""#,
+                    img.url,
+                    img.title.clone().unwrap_or_default()
+                )
+            }
             Node::ImageReference(_) => "".to_string(),
             Node::Link(link) => {
                 if link.url.starts_with('/') {

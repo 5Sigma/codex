@@ -81,25 +81,16 @@ fn build_project(root_path: String) -> Result<()> {
 
     build_folder(&project, &project.root_folder)?;
 
-    for file in core::assets::static_files() {
-        let pb = PathBuf::from(&*file);
-        let path = pb.strip_prefix("static").unwrap();
+    for file in core::assets::static_files(&project)? {
+        let source_path = file.source_path();
+        let path = source_path.strip_prefix("static").unwrap();
 
-        if let Some(parent) = path.parent() {
-            let parent_path = project
-                .path
-                .join(project.details.build_path.clone())
-                .join(parent);
-            if !parent_path.exists() {
-                std::fs::create_dir_all(parent_path)?;
-            }
-        }
-        let file_path = project
+        let destination = project
             .path
             .join(project.details.build_path.clone())
             .join(path);
-        println!("Writing {}", file_path.display());
-        std::fs::write(file_path, core::assets::get_bytes(&file))?;
+        println!("Writing {}", destination.display());
+        file.write(&project, destination)?;
     }
 
     Ok(())

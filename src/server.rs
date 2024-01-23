@@ -1,5 +1,5 @@
 use core::Project;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use tiny_http::{Request, Response, Server};
 
@@ -35,7 +35,8 @@ pub fn serve(project_path: String) {
                 .join(request.url().trim_matches('/'))
                 .display()
                 .to_string(),
-        ) {
+        ) || convert_static_url_to_path(&handler.project.path, &url).exists()
+        {
             handler.handle_static(request);
             // output_log(&url, now.elapsed());
         } else {
@@ -49,9 +50,18 @@ impl ServerHandler {
     #[allow(dead_code)]
     pub fn handle_static(&self, request: Request) {
         let path = &PathBuf::from("static").join(request.url().trim_matches('/'));
-        let f = core::assets::get_bytes(&path.display().to_string());
-        let response = Response::from_data(f);
-        let _ = request.respond(response);
+        if self.project.path.join(path).exists() {
+            if let Ok(f) = std::fs::read(self.project.path.join(path)) {
+                let response = Response::from_data(f);
+                let _ = request.respond(response);
+            } else {
+                let _ = request.respond(Response::from_string("Failed to read data"));
+            }
+        } else {
+            let f = core::assets::get_bytes(&path.display().to_string());
+            let response = Response::from_data(f);
+            let _ = request.respond(response);
+        }
     }
     pub fn handle_file(&self, request: Request) {
         let url = if request.url() == "/" {
@@ -92,4 +102,30 @@ fn output_log(url: &str, time: std::time::Duration) {
     let time = dim.apply_to(format!("{}ms", time.as_millis()));
     let url = bold.apply_to(url);
     let _ = term.write_line(&format!("[{}] {}", time, url));
+}
+
+fn convert_static_url_to_path(root: &Path, url: &str) -> PathBuf {
+    url.split('/')
+        .fold(root.join("static"), |acc, t| acc.join(t))
+}
+
+#[cfg(test)]
+mod tests {
+    use std::path::PathBuf;
+
+    use crate::server::convert_static_url_to_path;
+
+    #[test]
+    fn test_convert_static_url() {
+        assert_eq!(
+            convert_static_url_to_path(&PathBuf::from("/"), "/subpath/something.css")
+                .display()
+                .to_string(),
+            PathBuf::from("/static")
+                .join("subpath")
+                .join("something.css")
+                .display()
+                .to_string(),
+        );
+    }
 }

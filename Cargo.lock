@@ -32,6 +32,7 @@ dependencies = [
  "tree-sitter-lua",
  "tree-sitter-python",
  "tree-sitter-rust",
+ "walkdir",
 ]
 
 [[package]]
