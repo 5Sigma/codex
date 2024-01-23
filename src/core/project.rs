@@ -167,18 +167,24 @@ impl Project {
             } else if path.extension().and_then(|s| s.to_str()) == Some("md") {
                 let mut document = Document::parse_file(self, path.clone())?;
                 document.file_path = path.to_path_buf();
-                if path.file_name().and_then(|s| s.to_str()) == Some("index.md") {
-                    document.url = PathBuf::from(&self.details.base_url)
+                let rel_doc_path = if path.file_name().and_then(|s| s.to_str()) == Some("index.md")
+                {
+                    PathBuf::from(&self.details.base_url)
                         .join(path.parent().unwrap().strip_prefix(&self.path)?)
-                        .display()
-                        .to_string();
                 } else {
-                    document.url = PathBuf::from(&self.details.base_url)
+                    PathBuf::from(&self.details.base_url)
                         .join(path.strip_prefix(&self.path)?)
                         .with_extension("")
-                        .display()
-                        .to_string();
-                }
+                };
+                document.url = format!(
+                    "/{}",
+                    rel_doc_path
+                        .strip_prefix("/")?
+                        .components()
+                        .map(|c| c.as_os_str().to_str().unwrap())
+                        .collect::<Vec<&str>>()
+                        .join("/")
+                );
                 document.base_url = self.details.base_url.clone();
                 folder.documents.push(document);
             }
