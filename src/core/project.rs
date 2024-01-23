@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
-use crate::{Document, Result};
+use crate::{Document, Error, Result};
 
 #[derive(Debug, Deserialize, Serialize, Default)]
 #[serde(default)]
@@ -25,60 +25,15 @@ pub struct Folder {
 }
 
 impl Folder {
+    pub fn new(name: String, path: PathBuf) -> Self {
+        Self {
+            name,
+            path,
+            ..Default::default()
+        }
+    }
     pub fn get_name(&self) -> String {
         self.details.name.clone().unwrap_or(self.name.clone())
-    }
-
-    pub fn scan(&mut self, root_path: &PathBuf) -> Result<()> {
-        self.documents.clear();
-        self.folders.clear();
-        self.details = std::fs::File::open(self.path.join("group.yml"))
-            .ok()
-            .and_then(|f| serde_yaml::from_reader(f).ok())
-            .unwrap_or_default();
-        let p = std::path::Path::new(&self.path);
-        for entry in p.read_dir()? {
-            let entry = entry?;
-            let path = entry.path();
-            if path.file_name().and_then(|s| s.to_str()) == Some("static") {
-                continue;
-            }
-            if path.file_name().and_then(|s| s.to_str()) == Some("dist") {
-                continue;
-            }
-            if path.file_name().and_then(|s| s.to_str()) == Some(".git") {
-                continue;
-            }
-
-            if path.is_dir() {
-                let mut folder = Folder {
-                    name: entry.file_name().to_str().unwrap().to_string(),
-                    path: path.to_path_buf(),
-                    documents: Vec::new(),
-                    folders: Vec::new(),
-                    details: FolderDetails::default(),
-                };
-                folder.scan(root_path)?;
-                self.folders.push(folder);
-            } else if path.extension().and_then(|s| s.to_str()) == Some("md") {
-                let mut document = Document::parse_file(path.clone())?;
-                document.file_path = path.to_path_buf();
-                if path.file_name().and_then(|s| s.to_str()) == Some("index.md") {
-                    document.url = PathBuf::from("/")
-                        .join(path.parent().unwrap().strip_prefix(root_path)?)
-                        .display()
-                        .to_string();
-                } else {
-                    document.url = PathBuf::from("/")
-                        .join(path.strip_prefix(root_path)?)
-                        .with_extension("")
-                        .display()
-                        .to_string();
-                }
-                self.documents.push(document);
-            }
-        }
-        Ok(())
     }
 
     pub fn iter_all_documents<'a>(&'a self) -> Box<dyn Iterator<Item = &Document> + 'a> {
@@ -99,6 +54,7 @@ pub struct ProjectDetails {
     pub build_path: String,
     pub repo_url: Option<String>,
     pub project_page: Option<String>,
+    pub base_url: String,
 }
 
 impl Default for ProjectDetails {
@@ -108,6 +64,7 @@ impl Default for ProjectDetails {
             build_path: "dist".to_string(),
             repo_url: None,
             project_page: None,
+            base_url: "".to_string(),
         }
     }
 }
@@ -150,12 +107,13 @@ impl Project {
         };
         project.path = path.clone();
         project.root_folder.path = path.clone();
-        project.root_folder.scan(&path)?;
+        project.root_folder = project.scan_folder(&path)?;
         Ok(project)
     }
 
     pub fn reload(&mut self) -> Result<()> {
-        self.root_folder.scan(&self.path)?;
+        let path = self.path.clone();
+        self.root_folder = self.scan_folder(&path)?;
         Ok(())
     }
 
@@ -171,5 +129,69 @@ impl Project {
 
     pub fn get_document_for_url(&self, url: &str) -> Option<&Document> {
         self.root_folder.iter_all_documents().find(|d| d.url == url)
+    }
+
+    pub fn serve_details(&self) -> ProjectDetails {
+        ProjectDetails {
+            base_url: "".parse().unwrap(),
+            ..self.details.clone()
+        }
+    }
+
+    pub fn build_details(&self) -> ProjectDetails {
+        let mut details = self.details.clone();
+        if details.base_url.ends_with('/') {
+            details.base_url.pop();
+        }
+        details
+    }
+
+    pub fn scan_folder(&mut self, root_path: &PathBuf) -> Result<Folder> {
+        let folder_name = root_path
+            .file_name()
+            .ok_or_else(|| Error::new("Bad folder name"))?
+            .to_str()
+            .ok_or_else(|| Error::new("Bad folder name"))?;
+        let mut folder = Folder::new(folder_name.into(), root_path.clone());
+        self.details = std::fs::File::open(root_path.join("group.yml"))
+            .ok()
+            .and_then(|f| serde_yaml::from_reader(f).ok())
+            .unwrap_or_default();
+        let p = std::path::Path::new(&root_path);
+        for entry in p.read_dir()? {
+            let entry = entry?;
+            let path = entry.path();
+            if path.file_name().and_then(|s| s.to_str()) == Some("static") {
+                continue;
+            }
+            if path.file_name().and_then(|s| s.to_str()) == Some("dist") {
+                continue;
+            }
+            if path.file_name().and_then(|s| s.to_str()) == Some(".git") {
+                continue;
+            }
+
+            if path.is_dir() {
+                folder.folders.push(self.scan_folder(&path.to_path_buf())?);
+            } else if path.extension().and_then(|s| s.to_str()) == Some("md") {
+                let mut document = Document::parse_file(self, path.clone())?;
+                document.file_path = path.to_path_buf();
+                if path.file_name().and_then(|s| s.to_str()) == Some("index.md") {
+                    document.url = PathBuf::from(&self.details.base_url)
+                        .join(path.parent().unwrap().strip_prefix(root_path)?)
+                        .display()
+                        .to_string();
+                } else {
+                    document.url = PathBuf::from(&self.details.base_url)
+                        .join(path.strip_prefix(root_path)?)
+                        .with_extension("")
+                        .display()
+                        .to_string();
+                }
+                document.base_url = self.details.base_url.clone();
+                folder.documents.push(document);
+            }
+        }
+        Ok(folder)
     }
 }

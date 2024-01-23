@@ -8,8 +8,13 @@ pub struct Error {
 }
 
 impl Error {
-    pub fn new(message: String) -> Self {
-        Self { message }
+    pub fn new<S>(message: S) -> Self
+    where
+        S: Into<String>,
+    {
+        Self {
+            message: message.into(),
+        }
     }
 }
 

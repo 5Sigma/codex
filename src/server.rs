@@ -1,4 +1,4 @@
-use core::Project;
+use core::{ContentMode, Project};
 use std::path::PathBuf;
 
 use tiny_http::{Request, Response, Server};
@@ -60,11 +60,14 @@ impl ServerHandler {
             request.url().trim_end_matches('/')
         };
         if let Some(doc) = self.project.get_document_for_url(url) {
-            let response = Response::from_string(doc.page_content(&self.project).unwrap())
-                .with_header(tiny_http::Header {
-                    field: "Content-Type".parse().unwrap(),
-                    value: "text/html".parse().unwrap(),
-                });
+            let response = Response::from_string(
+                doc.page_content(&self.project, ContentMode::Server)
+                    .unwrap(),
+            )
+            .with_header(tiny_http::Header {
+                field: "Content-Type".parse().unwrap(),
+                value: "text/html".parse().unwrap(),
+            });
             let _ = request.respond(response);
         } else {
             let ctx = core::DataContext {

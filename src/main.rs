@@ -86,17 +86,20 @@ fn build_project(root_path: String) -> Result<()> {
         let path = pb.strip_prefix("static").unwrap();
 
         if let Some(parent) = path.parent() {
-            if !parent.exists() {
-                std::fs::create_dir_all(parent)?;
-            }
-        }
-        std::fs::write(
-            project
+            let parent_path = project
                 .path
                 .join(project.details.build_path.clone())
-                .join(path),
-            core::assets::get_bytes(&file),
-        )?;
+                .join(parent);
+            if !parent_path.exists() {
+                std::fs::create_dir_all(parent_path)?;
+            }
+        }
+        let file_path = project
+            .path
+            .join(project.details.build_path.clone())
+            .join(path);
+        println!("Writing {}", file_path.display());
+        std::fs::write(file_path, core::assets::get_bytes(&file))?;
     }
 
     Ok(())
@@ -113,7 +116,7 @@ fn build_folder(project: &Project, folder: &core::Folder) -> Result<()> {
 }
 
 fn build_document(path: &Path, project: &Project, doc: &core::Document) -> Result<()> {
-    let content = doc.page_content(project)?;
+    let content = doc.page_content(project, core::ContentMode::Build)?;
     let file_path = if doc
         .file_path
         .file_stem()
