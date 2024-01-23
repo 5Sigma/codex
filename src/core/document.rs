@@ -8,7 +8,7 @@ use markdown::{
 use serde::{Deserialize, Serialize};
 use tree_sitter_highlight::{HighlightConfiguration, HighlightEvent, Highlighter};
 
-use crate::{render_template, Result};
+use crate::{render_template, Project, Result};
 
 /// The names of the classes for syntax highlighting
 /// This is used to highlight code blocks
@@ -70,6 +70,8 @@ pub struct Document {
     pub toc: Vec<TocEntry>,
     /// The URL of the document
     pub url: String,
+    /// The URL of the document
+    pub base_url: String,
 }
 
 impl std::fmt::Debug for Document {
@@ -79,6 +81,7 @@ impl std::fmt::Debug for Document {
             .field("frontmatter", &self.frontmatter)
             .field("toc", &self.toc)
             .field("url", &self.url)
+            .field("base_url", &self.base_url)
             .finish()
     }
 }
@@ -93,14 +96,9 @@ impl Document {
     /// A `Result` containing the parsed document
     /// # Errors
     /// This will return an error if the markdown is invalid or if the front matter is invalid
-    /// # Examples
-    /// ```no_run
-    /// use core::Document;
-    /// let document = Document::parse_file("somefile.md").unwrap();
-    /// ```
     /// # See Also
     /// * [`Document::parse_file`] - Parse a markdown file into a document
-    pub fn parse(file_path: PathBuf, content: &str) -> Result<Self> {
+    pub fn parse(project: &Project, file_path: PathBuf, content: &str) -> Result<Self> {
         let parser_options = markdown::ParseOptions {
             constructs: markdown::Constructs {
                 code_indented: false,
@@ -143,16 +141,18 @@ impl Document {
             })
             .unwrap_or_default();
 
-        // Convert the AST to HTML
-        let body = to_html(&ast);
-
-        Ok(Document {
+        let mut doc = Document {
             frontmatter,
-            body,
+            body: "".to_string(),
             toc,
             url: file_path.display().to_string(),
+            base_url: project.details.base_url.clone(),
             file_path,
-        })
+        };
+        // Convert the AST to HTML
+        doc.body = doc.to_html(&ast);
+
+        Ok(doc)
     }
 
     /// Parse a markdown file into a document
@@ -164,17 +164,13 @@ impl Document {
     /// # Errors
     /// This will return an error if the markdown is invalid or if the front matter is invalid
     /// # Examples
-    /// ```no_run
-    /// use core::Document;
-    /// let document = Document::parse_file("somefile.md").unwrap();
-    /// ```
-    pub fn parse_file<P>(file_path: P) -> Result<Self>
+    pub fn parse_file<P>(project: &Project, file_path: P) -> Result<Self>
     where
         P: Into<PathBuf>,
     {
         let file_path = file_path.into();
         let content = std::fs::read_to_string(file_path.clone())?;
-        Self::parse(file_path, &content)
+        Self::parse(project, file_path, &content)
     }
 
     /// Get the HTML content of the page
@@ -189,140 +185,186 @@ impl Document {
         };
         render_template(data, &crate::assets::get_str("templates/article.html"))
     }
+
+    /// Convert a single node to HTML
+    pub fn to_html(&self, node: &Node) -> String {
+        match node {
+            Node::Root(root) => root.children.iter().fold(String::new(), |acc, child| {
+                format!("{}{}", acc, self.to_html(child))
+            }),
+            Node::BlockQuote(block_quote) => self.wrap_nodes(
+                r#"<blockquote class="blockquote">"#,
+                "</blockquote>",
+                &block_quote.children,
+            ),
+            Node::FootnoteDefinition(_) => "".to_string(),
+            Node::MdxJsxFlowElement(el) => {
+                if let Some(name) = el.name.as_ref() {
+                    match self.apply_component(name, &el.attributes, &el.children) {
+                        Ok(html) => html,
+                        Err(e) => format!("<pre>{}</pre>", html_escape(&e.to_string())),
+                    }
+                } else {
+                    "".to_string()
+                }
+            }
+            Node::MdxJsxTextElement(el) => {
+                if let Some(name) = el.name.as_ref() {
+                    match self.apply_component(name, &el.attributes, &el.children) {
+                        Ok(html) => html,
+                        Err(e) => format!("<pre>{}</pre>", html_escape(&e.to_string())),
+                    }
+                } else {
+                    "".to_string()
+                }
+            }
+            Node::List(list) => {
+                if list.ordered {
+                    self.wrap_nodes("<ol>", "</ol>", &list.children)
+                } else {
+                    self.wrap_nodes("<ul>", "</ul>", &list.children)
+                }
+            }
+            Node::MdxjsEsm(_) => "".to_string(),
+            Node::Toml(_) => "".to_string(),
+            Node::Yaml(_) => "".to_string(),
+            Node::Break(_) => "".to_string(),
+            Node::InlineCode(_) => "".to_string(),
+            Node::InlineMath(_) => "".to_string(),
+            Node::Delete(_) => "".to_string(),
+            Node::Emphasis(em) => {
+                self.wrap_nodes(r#"<span class="fst-italic">"#, "</span>", &em.children)
+            }
+            Node::MdxTextExpression(_) => "".to_string(),
+            Node::FootnoteReference(_) => "".to_string(),
+            Node::Html(_) => "".to_string(),
+            Node::Image(_) => "".to_string(),
+            Node::ImageReference(_) => "".to_string(),
+            Node::Link(link) => {
+                if link.url.starts_with('/') {
+                    format!(
+                        "<a href=\"{}{}\">{}</a>",
+                        self.base_url,
+                        link.url.clone().trim_start_matches('/'),
+                        self.all_to_html(link.children.as_slice())
+                    )
+                } else {
+                    format!(
+                        "<a href=\"{}\">{}</a>",
+                        link.url.clone().trim_start_matches('/'),
+                        self.all_to_html(link.children.as_slice())
+                    )
+                }
+            }
+            Node::LinkReference(_) => "".to_string(),
+            Node::Strong(bold) => {
+                self.wrap_nodes(r#"<span class="fw-bold">"#, "</span>", &bold.children)
+            }
+            Node::Text(text) => text.value.clone(),
+            Node::Code(code) => {
+                let mut s = String::from("<pre><code>");
+                if let Some(config) = code
+                    .lang
+                    .as_ref()
+                    .and_then(|lang| build_highlighter_config(lang))
+                {
+                    let mut highlighter = Highlighter::new();
+                    let highlights = highlighter
+                        .highlight(&config, code.value.as_bytes(), None, |_| None)
+                        .unwrap();
+
+                    for event in highlights {
+                        match event.unwrap() {
+                            HighlightEvent::Source { start, end } => {
+                                s.push_str(&html_escape(&code.value[start..end]));
+                            }
+                            HighlightEvent::HighlightStart(highlight) => {
+                                s.push_str(&format!("<span class=\"highlight-{}\">", highlight.0));
+                            }
+                            HighlightEvent::HighlightEnd => {
+                                s.push_str("</span>");
+                            }
+                        }
+                    }
+                } else {
+                    s.push_str(&html_escape(&code.value));
+                }
+                s.push_str("</code></pre>");
+                s
+            }
+            Node::Math(_) => "".to_string(),
+            Node::MdxFlowExpression(exp) => self.apply_expression(&exp.value).unwrap(),
+            Node::Heading(h) => {
+                let text = heading_text(h).unwrap();
+                let slug = slug(&text);
+                let tag = format!("h{}", h.depth + 3);
+                let html = h.children.iter().fold(String::new(), |acc, child| {
+                    format!("{}{}", acc, self.to_html(child))
+                });
+                format!("<{} id=\"{}\">{}</{}>", tag, slug, html, tag)
+            }
+            Node::Table(table) => self.wrap_nodes(
+                "<table class=\"table table-sm\">",
+                "</table>",
+                &table.children,
+            ),
+            Node::ThematicBreak(_) => "<hr/>".to_string(),
+            Node::TableRow(node) => self.wrap_nodes("<tr>", "</tr>", &node.children),
+            Node::TableCell(node) => self.wrap_nodes("<td>", "</td>", &node.children),
+            Node::ListItem(li) => self.wrap_nodes("<li>", "</li>", &li.children),
+            Node::Definition(_) => "".to_string(),
+            Node::Paragraph(p) => self.wrap_nodes("<p>", "</p>", &p.children),
+        }
+    }
+
+    /// Wrap a list of nodes in HTML with the provided start and end fragments
+    pub fn wrap_nodes(&self, start: &str, end: &str, nodes: &[Node]) -> String {
+        format!("{}{}{}", start, self.all_to_html(nodes), end)
+    }
+
+    /// Convert a list of nodes to HTML
+    pub fn all_to_html(&self, nodes: &[Node]) -> String {
+        nodes.iter().fold(String::new(), |acc, child| {
+            format!("{}{}", acc, self.to_html(child))
+        })
+    }
+
+    pub fn apply_component(
+        &self,
+        name: &str,
+        attrs: &[markdown::mdast::AttributeContent],
+        children: &[Node],
+    ) -> Result<String> {
+        let template = match name {
+            "Alert" => crate::assets::get_str("components/alert.html"),
+            "Field" => crate::assets::get_str("components/field.html"),
+            _ => String::default(),
+        };
+
+        let mut data = HashMap::new();
+        for attr in attrs {
+            if let AttributeContent::Property(MdxJsxAttribute {
+                name,
+                value: Some(AttributeValue::Literal(value)),
+            }) = attr
+            {
+                data.insert(name.to_string(), value.to_string());
+            }
+        }
+        data.insert("children".to_string(), self.all_to_html(children));
+        render_template(data, &template)
+    }
+
+    pub fn apply_expression(&self, exp: &str) -> Result<String> {
+        match exp {
+            "id" => Ok(nanoid::nanoid!()),
+            _ => Ok("".to_string()),
+        }
+    }
 }
 
 pub fn parse_expression(_value: &str, _kind: &MdxExpressionKind) -> MdxSignal {
     MdxSignal::Ok
-}
-
-/// Wrap a list of nodes in HTML with the provided start and end fragments
-pub fn wrap_nodes(start: &str, end: &str, nodes: &[Node]) -> String {
-    format!("{}{}{}", start, all_to_html(nodes), end)
-}
-
-/// Convert a list of nodes to HTML
-pub fn all_to_html(nodes: &[Node]) -> String {
-    nodes.iter().fold(String::new(), |acc, child| {
-        format!("{}{}", acc, to_html(child))
-    })
-}
-
-/// Convert a single node to HTML
-pub fn to_html(node: &Node) -> String {
-    match node {
-        Node::Root(root) => root.children.iter().fold(String::new(), |acc, child| {
-            format!("{}{}", acc, to_html(child))
-        }),
-        Node::BlockQuote(block_quote) => wrap_nodes(
-            r#"<blockquote class="blockquote">"#,
-            "</blockquote>",
-            &block_quote.children,
-        ),
-        Node::FootnoteDefinition(_) => "".to_string(),
-        Node::MdxJsxFlowElement(el) => {
-            if let Some(name) = el.name.as_ref() {
-                match apply_component(name, &el.attributes, &el.children) {
-                    Ok(html) => html,
-                    Err(e) => format!("<pre>{}</pre>", html_escape(&e.to_string())),
-                }
-            } else {
-                "".to_string()
-            }
-        }
-        Node::MdxJsxTextElement(el) => {
-            if let Some(name) = el.name.as_ref() {
-                match apply_component(name, &el.attributes, &el.children) {
-                    Ok(html) => html,
-                    Err(e) => format!("<pre>{}</pre>", html_escape(&e.to_string())),
-                }
-            } else {
-                "".to_string()
-            }
-        }
-        Node::List(list) => {
-            if list.ordered {
-                wrap_nodes("<ol>", "</ol>", &list.children)
-            } else {
-                wrap_nodes("<ul>", "</ul>", &list.children)
-            }
-        }
-        Node::MdxjsEsm(_) => "".to_string(),
-        Node::Toml(_) => "".to_string(),
-        Node::Yaml(_) => "".to_string(),
-        Node::Break(_) => "".to_string(),
-        Node::InlineCode(_) => "".to_string(),
-        Node::InlineMath(_) => "".to_string(),
-        Node::Delete(_) => "".to_string(),
-        Node::Emphasis(em) => wrap_nodes(r#"<span class="fst-italic">"#, "</span>", &em.children),
-        Node::MdxTextExpression(_) => "".to_string(),
-        Node::FootnoteReference(_) => "".to_string(),
-        Node::Html(_) => "".to_string(),
-        Node::Image(_) => "".to_string(),
-        Node::ImageReference(_) => "".to_string(),
-        Node::Link(link) => {
-            format!(
-                "<a href=\"{}\">{}</a>",
-                link.url.clone(),
-                all_to_html(link.children.as_slice())
-            )
-        }
-        Node::LinkReference(_) => "".to_string(),
-        Node::Strong(bold) => wrap_nodes(r#"<span class="fw-bold">"#, "</span>", &bold.children),
-        Node::Text(text) => text.value.clone(),
-        Node::Code(code) => {
-            let mut s = String::from("<pre><code>");
-            if let Some(config) = code
-                .lang
-                .as_ref()
-                .and_then(|lang| build_highlighter_config(lang))
-            {
-                let mut highlighter = Highlighter::new();
-                let highlights = highlighter
-                    .highlight(&config, code.value.as_bytes(), None, |_| None)
-                    .unwrap();
-
-                for event in highlights {
-                    match event.unwrap() {
-                        HighlightEvent::Source { start, end } => {
-                            s.push_str(&html_escape(&code.value[start..end]));
-                        }
-                        HighlightEvent::HighlightStart(highlight) => {
-                            s.push_str(&format!("<span class=\"highlight-{}\">", highlight.0));
-                        }
-                        HighlightEvent::HighlightEnd => {
-                            s.push_str("</span>");
-                        }
-                    }
-                }
-            } else {
-                s.push_str(&html_escape(&code.value));
-            }
-            s.push_str("</code></pre>");
-            s
-        }
-        Node::Math(_) => "".to_string(),
-        Node::MdxFlowExpression(exp) => apply_expression(&exp.value).unwrap(),
-        Node::Heading(h) => {
-            let text = heading_text(h).unwrap();
-            let slug = slug(&text);
-            let tag = format!("h{}", h.depth + 3);
-            let html = h.children.iter().fold(String::new(), |acc, child| {
-                format!("{}{}", acc, to_html(child))
-            });
-            format!("<{} id=\"{}\">{}</{}>", tag, slug, html, tag)
-        }
-        Node::Table(table) => wrap_nodes(
-            "<table class=\"table table-sm\">",
-            "</table>",
-            &table.children,
-        ),
-        Node::ThematicBreak(_) => "<hr/>".to_string(),
-        Node::TableRow(node) => wrap_nodes("<tr>", "</tr>", &node.children),
-        Node::TableCell(node) => wrap_nodes("<td>", "</td>", &node.children),
-        Node::ListItem(li) => wrap_nodes("<li>", "</li>", &li.children),
-        Node::Definition(_) => "".to_string(),
-        Node::Paragraph(p) => wrap_nodes("<p>", "</p>", &p.children),
-    }
 }
 
 /// Build a highlighter configuration for the given language
@@ -518,37 +560,5 @@ impl From<&crate::Folder> for SiteMapFolder {
             menu_position: folder.details.menu_position,
             name: folder.get_name(),
         }
-    }
-}
-
-pub fn apply_component(
-    name: &str,
-    attrs: &[markdown::mdast::AttributeContent],
-    children: &[Node],
-) -> Result<String> {
-    let template = match name {
-        "Alert" => crate::assets::get_str("components/alert.html"),
-        "Field" => crate::assets::get_str("components/field.html"),
-        _ => String::default(),
-    };
-
-    let mut data = HashMap::new();
-    for attr in attrs {
-        if let AttributeContent::Property(MdxJsxAttribute {
-            name,
-            value: Some(AttributeValue::Literal(value)),
-        }) = attr
-        {
-            data.insert(name.to_string(), value.to_string());
-        }
-    }
-    data.insert("children".to_string(), all_to_html(children));
-    render_template(data, &template)
-}
-
-pub fn apply_expression(exp: &str) -> Result<String> {
-    match exp {
-        "id" => Ok(nanoid::nanoid!()),
-        _ => Ok("".to_string()),
     }
 }

@@ -21,7 +21,7 @@ pub fn serve(project_path: String) {
     ));
     let server = Server::http(server_url).unwrap();
     let mut handler = ServerHandler {
-        project: Project::load(project_path).unwrap(),
+        project: Project::load(project_path, true).unwrap(),
     };
 
     for request in server.incoming_requests() {

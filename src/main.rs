@@ -73,7 +73,7 @@ fn main() {
 
 fn build_project(root_path: String) -> Result<()> {
     let root_path = PathBuf::from(root_path);
-    let project = Project::load(&root_path)?;
+    let project = Project::load(&root_path, false)?;
     let build_path = root_path.join("dist");
     if !build_path.exists() {
         std::fs::create_dir(&build_path)?;
@@ -86,17 +86,20 @@ fn build_project(root_path: String) -> Result<()> {
         let path = pb.strip_prefix("static").unwrap();
 
         if let Some(parent) = path.parent() {
-            if !parent.exists() {
-                std::fs::create_dir_all(parent)?;
-            }
-        }
-        std::fs::write(
-            project
+            let parent_path = project
                 .path
                 .join(project.details.build_path.clone())
-                .join(path),
-            core::assets::get_bytes(&file),
-        )?;
+                .join(parent);
+            if !parent_path.exists() {
+                std::fs::create_dir_all(parent_path)?;
+            }
+        }
+        let file_path = project
+            .path
+            .join(project.details.build_path.clone())
+            .join(path);
+        println!("Writing {}", file_path.display());
+        std::fs::write(file_path, core::assets::get_bytes(&file))?;
     }
 
     Ok(())
