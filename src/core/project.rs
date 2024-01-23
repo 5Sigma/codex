@@ -64,7 +64,7 @@ impl Default for ProjectDetails {
             build_path: "dist".to_string(),
             repo_url: None,
             project_page: None,
-            base_url: "".to_string(),
+            base_url: "/".to_string(),
         }
     }
 }
@@ -92,7 +92,7 @@ impl Default for Project {
 }
 
 impl Project {
-    pub fn load<P>(path: P) -> Result<Self>
+    pub fn load<P>(path: P, ignore_base_url: bool) -> Result<Self>
     where
         P: Into<PathBuf>,
     {
@@ -105,6 +105,12 @@ impl Project {
         } else {
             Project::default()
         };
+        if ignore_base_url {
+            project.details.base_url = "/".to_string();
+        }
+        if !project.details.base_url.ends_with('/') {
+            project.details.base_url.push('/');
+        }
         project.path = path.clone();
         project.root_folder.path = path.clone();
         project.root_folder = project.scan_folder(&path)?;
@@ -131,21 +137,6 @@ impl Project {
         self.root_folder.iter_all_documents().find(|d| d.url == url)
     }
 
-    pub fn serve_details(&self) -> ProjectDetails {
-        ProjectDetails {
-            base_url: "".parse().unwrap(),
-            ..self.details.clone()
-        }
-    }
-
-    pub fn build_details(&self) -> ProjectDetails {
-        let mut details = self.details.clone();
-        if details.base_url.ends_with('/') {
-            details.base_url.pop();
-        }
-        details
-    }
-
     pub fn scan_folder(&mut self, root_path: &PathBuf) -> Result<Folder> {
         let folder_name = root_path
             .file_name()
@@ -153,7 +144,7 @@ impl Project {
             .to_str()
             .ok_or_else(|| Error::new("Bad folder name"))?;
         let mut folder = Folder::new(folder_name.into(), root_path.clone());
-        self.details = std::fs::File::open(root_path.join("group.yml"))
+        folder.details = std::fs::File::open(root_path.join("group.yml"))
             .ok()
             .and_then(|f| serde_yaml::from_reader(f).ok())
             .unwrap_or_default();
@@ -178,12 +169,12 @@ impl Project {
                 document.file_path = path.to_path_buf();
                 if path.file_name().and_then(|s| s.to_str()) == Some("index.md") {
                     document.url = PathBuf::from(&self.details.base_url)
-                        .join(path.parent().unwrap().strip_prefix(root_path)?)
+                        .join(path.parent().unwrap().strip_prefix(&self.path)?)
                         .display()
                         .to_string();
                 } else {
                     document.url = PathBuf::from(&self.details.base_url)
-                        .join(path.strip_prefix(root_path)?)
+                        .join(path.strip_prefix(&self.path)?)
                         .with_extension("")
                         .display()
                         .to_string();
@@ -193,5 +184,38 @@ impl Project {
             }
         }
         Ok(folder)
+    }
+}
+
+#[cfg(test)]
+
+pub mod tests {
+    use super::*;
+
+    #[test]
+    fn project_base_url() {
+        let mut project = Project::load("test/fixture", false).unwrap();
+
+        // Without base url
+        let doc = project.get_document_for_url("/elements/root_link").unwrap();
+        assert_eq!(doc.url, "/elements/root_link".to_string());
+        assert_eq!(
+            doc.body,
+            r#"<p><a href="/somewhere/someplace">Test</a></p>"#,
+        );
+        assert_eq!(project.details.base_url, "/".to_string());
+
+        // With base url
+        project.details.base_url = "/docs/".to_string();
+        project.reload().unwrap();
+        let doc = project
+            .get_document_for_url("/docs/elements/root_link")
+            .unwrap();
+        assert_eq!(doc.url, "/docs/elements/root_link".to_string());
+        assert_eq!(
+            doc.body,
+            r#"<p><a href="/docs/somewhere/someplace">Test</a></p>"#,
+        );
+        assert_eq!(project.details.base_url, "/docs/".to_string());
     }
 }

@@ -73,7 +73,7 @@ fn main() {
 
 fn build_project(root_path: String) -> Result<()> {
     let root_path = PathBuf::from(root_path);
-    let project = Project::load(&root_path)?;
+    let project = Project::load(&root_path, false)?;
     let build_path = root_path.join("dist");
     if !build_path.exists() {
         std::fs::create_dir(&build_path)?;
@@ -116,7 +116,7 @@ fn build_folder(project: &Project, folder: &core::Folder) -> Result<()> {
 }
 
 fn build_document(path: &Path, project: &Project, doc: &core::Document) -> Result<()> {
-    let content = doc.page_content(project, core::ContentMode::Build)?;
+    let content = doc.page_content(project)?;
     let file_path = if doc
         .file_path
         .file_stem()

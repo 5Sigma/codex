@@ -10,11 +10,6 @@ use tree_sitter_highlight::{HighlightConfiguration, HighlightEvent, Highlighter}
 
 use crate::{render_template, Project, Result};
 
-pub enum ContentMode {
-    Server,
-    Build,
-}
-
 /// The names of the classes for syntax highlighting
 /// This is used to highlight code blocks
 /// # See Also
@@ -86,6 +81,7 @@ impl std::fmt::Debug for Document {
             .field("frontmatter", &self.frontmatter)
             .field("toc", &self.toc)
             .field("url", &self.url)
+            .field("base_url", &self.base_url)
             .finish()
     }
 }
@@ -100,11 +96,6 @@ impl Document {
     /// A `Result` containing the parsed document
     /// # Errors
     /// This will return an error if the markdown is invalid or if the front matter is invalid
-    /// # Examples
-    /// ```no_run
-    /// use core::Document;
-    /// let document = Document::parse_file("somefile.md").unwrap();
-    /// ```
     /// # See Also
     /// * [`Document::parse_file`] - Parse a markdown file into a document
     pub fn parse(project: &Project, file_path: PathBuf, content: &str) -> Result<Self> {
@@ -173,10 +164,6 @@ impl Document {
     /// # Errors
     /// This will return an error if the markdown is invalid or if the front matter is invalid
     /// # Examples
-    /// ```no_run
-    /// use core::Document;
-    /// let document = Document::parse_file("somefile.md").unwrap();
-    /// ```
     pub fn parse_file<P>(project: &Project, file_path: P) -> Result<Self>
     where
         P: Into<PathBuf>,
@@ -187,16 +174,13 @@ impl Document {
     }
 
     /// Get the HTML content of the page
-    pub fn page_content(&self, project: &crate::Project, mode: ContentMode) -> Result<String> {
+    pub fn page_content(&self, project: &crate::Project) -> Result<String> {
         let sitemap = (&project.root_folder).into();
         let data = DataContext {
             body: self.body.clone(),
             document: self.frontmatter.clone(),
             sitemap,
-            project: match mode {
-                ContentMode::Server => project.serve_details(),
-                ContentMode::Build => project.build_details(),
-            },
+            project: project.details.clone(),
             toc: self.toc.clone(),
         };
         render_template(data, &crate::assets::get_str("templates/article.html"))
@@ -257,12 +241,20 @@ impl Document {
             Node::Image(_) => "".to_string(),
             Node::ImageReference(_) => "".to_string(),
             Node::Link(link) => {
-                format!(
-                    "<a href=\"{}{}\">{}</a>",
-                    self.base_url,
-                    link.url.clone(),
-                    self.all_to_html(link.children.as_slice())
-                )
+                if link.url.starts_with('/') {
+                    format!(
+                        "<a href=\"{}{}\">{}</a>",
+                        self.base_url,
+                        link.url.clone().trim_start_matches('/'),
+                        self.all_to_html(link.children.as_slice())
+                    )
+                } else {
+                    format!(
+                        "<a href=\"{}\">{}</a>",
+                        link.url.clone().trim_start_matches('/'),
+                        self.all_to_html(link.children.as_slice())
+                    )
+                }
             }
             Node::LinkReference(_) => "".to_string(),
             Node::Strong(bold) => {
