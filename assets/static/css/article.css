@@ -182,3 +182,6 @@ hr {
   margin-bottom: 0;
 }
 
+.field + .field {
+  margin-top: -2px !important;
+}

@@ -1,6 +1,7 @@
 ---
 title: Project Configuration
-subtitle: Overview
+subtitle: Configuration
+menu_position: -1
 ---
 
 
@@ -17,17 +18,22 @@ project root.
 <Field name="build_path" type="String">
     A path relative to the project path to place compiled files into.
 </Field>
-<Field name="repo_url" type="String?">
-    A url to the project's code repository. If specified a code link will 
+<Field name="repo_url" type="String">
+    A URL to the project's code repository. If specified a code link will 
     appear in the header.
 
     To disable this simply omit the field from the config or set it to ~.
 </Field>
-<Field name="project_url" type="String?">
-    A url to the project's main page. If specified a home link will 
+<Field name="project_url" type="String">
+    A URL to the project's main page. If specified a home link will 
     appear in the header.
 
     To disable this simply omit the field from the config or set it to ~.
+</Field>
+<Field name="base_url" type="String">
+    Base URL can be set to allow the site to be hosted in a sub path. This 
+    value will be prefixed to static asset URLs, navigation URLs, and all 
+    relative links inside documents.
 </Field>
 
 # Example Configuration

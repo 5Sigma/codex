@@ -301,7 +301,7 @@ impl Document {
                 let html = h.children.iter().fold(String::new(), |acc, child| {
                     format!("{}{}", acc, self.to_html(child))
                 });
-                format!("<{} id=\"{}\">{}</{}>", tag, slug, html, tag)
+                format!("<{} class=\"mt-4\" id=\"{}\">{}</{}>", tag, slug, html, tag)
             }
             Node::Table(table) => self.wrap_nodes(
                 "<table class=\"table table-sm\">",
