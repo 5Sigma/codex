@@ -1,6 +1,6 @@
 ---
 title: Group Configuration
-subtitle: Overview
+subtitle: Configuration
 ---
 
 

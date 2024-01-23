@@ -1,5 +1,6 @@
 ---
 title: Project Structure
+subtitle: Overview
 ---
 
 # Creating a new project

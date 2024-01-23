@@ -1,6 +1,7 @@
 ---
 title: Project Configuration
-subtitle: Overview
+subtitle: Configuration
+menu_position: -1
 ---
 
 

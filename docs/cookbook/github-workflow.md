@@ -56,11 +56,9 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      -
-        name: Checkout
+      - name: Checkout
         uses: actions/checkout@v4
-      -
-        name: Build 
+      - name: Build 
         run: |
           curl --proto '=https' --tlsv1.2 -LsSf https://github.com/5Sigma/codex/releases/latest/download/Codex-installer.sh | sh
           codex -r docs build
