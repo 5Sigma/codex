@@ -217,5 +217,11 @@ pub mod tests {
             r#"<p><a href="/docs/somewhere/someplace">Test</a></p>"#,
         );
         assert_eq!(project.details.base_url, "/docs/".to_string());
+
+        let doc = project
+            .get_document_for_url("/docs/elements/external_link")
+            .unwrap();
+
+        assert_eq!(doc.body, r#"<p><a href="https://example.com">Test</a></p>"#,);
     }
 }
