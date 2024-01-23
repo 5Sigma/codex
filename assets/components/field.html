@@ -1,27 +1,28 @@
-<div class="mb-3">
-  <div class="d-flex justify-content-between p-2 ps-2 pe-4 fs-6 bg-light">
-    <div>
-      {{#if required}}
-        <span 
-          class="d-inline-block me-1">
-            <i class="fal fa-brake-warning text-danger"></i>
-        </span>
-      {{/if}}
-    <a class="fw-bold link-dark link-underline-opacity-0 link-dark link-underline-opacity-75-hover" 
+<div class="mb-1 mt-4 position-relative field">
+  <div class="d-flex justify-content-between ps-2 pe-2 fs-6 border align-items-stretch">
+    <a class="fw-bold link-dark link-underline-opacity-0 link-dark link-underline-opacity-75-hover p-2 stretched-link" 
       data-bs-toggle="collapse" 
       href="#{{id}}">
       {{name}}
     </a>
+    <div class="flex-fill"></div>
+    <div class="d-inline-block me-3 ps-3 p-2">
+      {{#if required}}
+        <span 
+          class="badge rounded-pill bg-danger">
+          required
+        </span>
+      {{else}}
+        <span 
+          class="badge rounded-pill bg-secondary">
+          optional
+        </span>
+      {{/if}}
     </div>
-    <div class="text-gray fst-italic">{{type}}</div>
+    <span class="fst-italic fw-bold p-2 text-center">{{type}}</span>
   </div>
   <div class="collapse" id={{id}}>
     <div class="p-2">
-      <div class="text-end fw-bold text-danger text-opacity-50">
-        {{#if required}}
-          * This field is required
-        {{/if}}
-      </div>
       {{{children}}}
     </div>
   </div>
