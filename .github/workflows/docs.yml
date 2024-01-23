@@ -15,7 +15,7 @@ jobs:
       -
         name: Build 
         run: |
-          curl --proto '=https' --tlsv1.2 -LsSf https://github.com/5Sigma/codex/releases/download/v0.1.0/Codex-installer.sh | sh
+          curl --proto '=https' --tlsv1.2 -LsSf https://github.com/5Sigma/codex/releases/latest/download/Codex-installer.sh | sh
           codex -r docs build
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3

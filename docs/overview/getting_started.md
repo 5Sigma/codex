@@ -15,16 +15,16 @@ Codex provides binaries for the following platforms:
 
 ## Linux & MacOS via shell script 
 
-On linux Codex can be installed via a installation shell script
+On Linux Codex can be installed via a installation shell script
 
 ```
-curl --proto '=https' --tlsv1.2 -LsSf https://github.com/5Sigma/codex/releases/download/v0.1.0/Codex-installer.sh | sh
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/5Sigma/codex/releases/latest/download/Codex-installer.sh | sh
 ```
 
 
-## Windows via PowerShell script
+## Windows via Power Shell script
 
-On windows Codex can be installed via PowerShell 
+On windows Codex can be installed via Power Shell 
 
 ```
 irm https://github.com/5Sigma/codex/releases/download/v0.1.0/Codex-installer.ps1 | iex
@@ -32,12 +32,12 @@ irm https://github.com/5Sigma/codex/releases/download/v0.1.0/Codex-installer.ps1
 
 ## Windows via Codex-installer
 
-An installer is available for windows at [here](https://github.com/5Sigma/codex/releases/download/v0.1.0/Codex-x86_64-pc-windows-msvc.zip).
+An installer is available for windows at [here](https://github.com/5Sigma/codex/releases/latest/download/Codex-x86_64-pc-windows-msvc.zip).
 
 
 ## Binary Downloads
 
-Binary downloads are available in the [Github Release Page](https://github.com/5Sigma/codex/releases/tag/v0.1.0).
+Binary downloads are available in the [Github Release Page](https://github.com/5Sigma/codex/releases/latest).
 
 # Setup a new project
 
