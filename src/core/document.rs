@@ -1,4 +1,4 @@
-use std::{collections::HashMap, time::SystemTime};
+use std::collections::HashMap;
 
 use handlebars::html_escape;
 use markdown::{
