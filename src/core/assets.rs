@@ -256,7 +256,7 @@ mod tests {
         let assets = crate::assets::static_files(&project).unwrap();
         assert!(assets
             .iter()
-            .map(|a| a.disk_path().display().to_string())
+            .map(|a| dbg!(a.disk_path().display().to_string()))
             .collect::<Vec<_>>()
             .contains(
                 &PathBuf::from("test")
