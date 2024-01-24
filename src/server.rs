@@ -1,4 +1,4 @@
-use core::{assets::CodexPath, Project};
+use core::Project;
 
 use tiny_http::{Request, Response, Server};
 

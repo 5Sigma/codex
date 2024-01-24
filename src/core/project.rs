@@ -147,7 +147,7 @@ impl Project {
 
     pub fn scan_folder(&mut self, root_path: &CodexPath) -> Result<Folder> {
         let folder_name = root_path.basename().unwrap_or("Unnamed".to_string());
-        let mut folder = Folder::new(folder_name.into(), root_path.clone());
+        let mut folder = Folder::new(folder_name, root_path.clone());
         folder.details = std::fs::File::open(root_path.disk_path().join("group.yml"))
             .ok()
             .and_then(|f| serde_yaml::from_reader(f).ok())
@@ -230,5 +230,23 @@ pub mod tests {
     #[test]
     fn project_load_path() {
         Project::load("test/fixture", false).unwrap();
+    }
+
+    #[test]
+    fn component_override() {
+        let project = Project::load("test/fixture", false).unwrap();
+        let doc = project
+            .get_document_for_url("/other/override_component")
+            .unwrap();
+        assert_eq!(doc.body, "Overridden\n");
+    }
+
+    #[test]
+    fn custom_component() {
+        let project = Project::load("test/fixture", false).unwrap();
+        let doc = project
+            .get_document_for_url("/other/custom_component")
+            .unwrap();
+        assert_eq!(doc.body, "hello Alice\n");
     }
 }

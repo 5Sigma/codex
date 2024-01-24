@@ -1,4 +1,4 @@
-use std::{collections::HashMap, path::PathBuf};
+use std::collections::HashMap;
 
 use handlebars::html_escape;
 use markdown::{
@@ -182,7 +182,7 @@ impl Document {
             &String::from_utf8(
                 project
                     .path
-                    .new_path(&PathBuf::from("_internal/templates/article.html"))
+                    .new_path("_internal/templates/article.html")
                     .read()?
                     .to_vec(),
             )?,
@@ -344,30 +344,26 @@ impl Document {
         attrs: &[markdown::mdast::AttributeContent],
         children: &[Node],
     ) -> Result<String> {
-        let template = match name {
-            "Alert" => self
-                .file_path
-                .new_path(PathBuf::from("_internal/components/alert.html")),
-            "Field" => self
-                .file_path
-                .new_path(PathBuf::from("_internal/components/field.html")),
-            _ => self
-                .file_path
-                .new_path(PathBuf::from("_internal/component/unknown.html")),
-        };
+        let cmp_path = self
+            .file_path
+            .new_path(format!("_internal/components/{}.html", name.to_lowercase()));
 
-        let mut data = HashMap::new();
-        for attr in attrs {
-            if let AttributeContent::Property(MdxJsxAttribute {
-                name,
-                value: Some(AttributeValue::Literal(value)),
-            }) = attr
-            {
-                data.insert(name.to_string(), value.to_string());
+        if cmp_path.exists() {
+            let mut data = HashMap::new();
+            for attr in attrs {
+                if let AttributeContent::Property(MdxJsxAttribute {
+                    name,
+                    value: Some(AttributeValue::Literal(value)),
+                }) = attr
+                {
+                    data.insert(name.to_string(), value.to_string());
+                }
             }
+            data.insert("children".to_string(), self.all_to_html(children));
+            render_template(data, &String::from_utf8(cmp_path.read()?.to_vec())?)
+        } else {
+            Ok("<pre>Unknown Component</pre>".to_string())
         }
-        data.insert("children".to_string(), self.all_to_html(children));
-        render_template(data, &String::from_utf8(template.read()?.to_vec())?)
     }
 
     pub fn apply_expression(&self, exp: &str) -> Result<String> {

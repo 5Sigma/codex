@@ -28,13 +28,13 @@ pub fn exists(name: &str) -> bool {
 pub fn static_files(project: &Project) -> Result<Vec<CodexPath>> {
     let mut assets = EmbeddedAsset::iter()
         .filter(|f| f.starts_with("static"))
-        .map(|f| project.path.new_path(&PathBuf::from(f.to_string())))
+        .map(|f| project.path.new_path(f.to_string()))
         .collect::<Vec<_>>();
     if project.path.join("static").exists() {
         for entry in walkdir::WalkDir::new(project.path.disk_path().join("static")) {
             let entry = entry?;
             if entry.file_type().is_file() {
-                assets.push(project.path.new_path(&entry.path()));
+                assets.push(project.path.new_path(entry.path()));
             }
         }
     }
