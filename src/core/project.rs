@@ -238,7 +238,7 @@ pub mod tests {
         let doc = project
             .get_document_for_url("/other/override_component")
             .unwrap();
-        assert_eq!(doc.body, "Overridden\n");
+        assert_eq!(doc.body.trim(), "Overridden");
     }
 
     #[test]
@@ -247,6 +247,6 @@ pub mod tests {
         let doc = project
             .get_document_for_url("/other/custom_component")
             .unwrap();
-        assert_eq!(doc.body, "hello Alice\n");
+        assert_eq!(doc.body.trim(), "hello Alice");
     }
 }

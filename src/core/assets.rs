@@ -269,8 +269,12 @@ mod tests {
         );
 
         assert_eq!(
-            cp.disk_path().display().to_string(),
-            "parent/root/one/two/afile.txt"
+            cp.disk_path(),
+            PathBuf::from("parent")
+                .join("root")
+                .join("one")
+                .join("two")
+                .join("afile.txt")
         );
 
         assert_eq!(cp.root_url(), "/one/two/afile.txt");
