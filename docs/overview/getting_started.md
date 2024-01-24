@@ -13,7 +13,7 @@ Codex provides binaries for the following platforms:
 - MacOS (Apple Silicon)
 - Windows
 
-## Linux & MacOS via shell script 
+## Linux/MacOS via shell script 
 
 On Linux Codex can be installed via a installation shell script
 
