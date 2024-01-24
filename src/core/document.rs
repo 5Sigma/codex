@@ -54,6 +54,8 @@ pub struct FrontMatter {
     /// A list of tags for the document
     tags: Vec<String>,
     menu_position: i32,
+    /// Whether or not the document should be excluded from the site map
+    menu_exclude: bool,
 }
 
 /// A document or page in the project
@@ -552,7 +554,12 @@ pub struct SiteMapFolder {
 
 impl From<&crate::Folder> for SiteMapFolder {
     fn from(folder: &crate::Folder) -> Self {
-        let mut pages = folder.documents.clone();
+        let mut pages = folder
+            .documents
+            .iter()
+            .filter(|d| !d.frontmatter.menu_exclude)
+            .cloned()
+            .collect::<Vec<_>>();
 
         pages.sort_by_key(|p| (p.frontmatter.menu_position, p.frontmatter.title.clone()));
 

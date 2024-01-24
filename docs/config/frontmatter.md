@@ -42,4 +42,6 @@ groups above default ones.
 Pages which have the same position (including pages with unspecified 
 positions) will be sorted alphabetically.
 </Field>
-
+<Field name="menu_exclude" type="bool" default="false">
+If true the page will not be displayed in the navigation menu.
+</Field>
