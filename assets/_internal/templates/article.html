@@ -9,7 +9,7 @@
   <style>
     @font-face {
       font-family: 'Overpass';
-      src: url('{{project.base_url}}/webfonts/overpass.ttf') format("truetype-variations");
+      src: url('{{project.base_url}}webfonts/overpass.ttf') format("truetype-variations");
       font-weight: 1 999;
     }
   </style>
@@ -19,7 +19,7 @@
       data-bs-target="#toc" 
       data-bs-smooth-scroll="true">
       <div class="border bottom-border p-3 fixed-top bg-white text-secondary">
-        <div class="container bg-white">
+        <div class="container-lg bg-white">
           <div class="d-flex justify-content-between">
             <div class="fw-bold">
               {{project.name}}
@@ -47,9 +47,9 @@
           </div>
         </div>
       </div>
-    <div class="container">
+    <div class="container-lg">
       <div class="row gx-5">
-        <div class="col-3 bg-light border-end pe-4 ps-4 full-height">
+        <div class="col-lg-auto col-md-3 bg-light border-end pe-4 ps-4 full-height">
           <div class="sticky-top" id="menu">
             <div class="pb-3">
               {{#each sitemap.pages}}
@@ -70,7 +70,7 @@
             {{/each}}
           </div>
         </div>
-        <div class="col-6">
+        <div class="col-md-9 col-lg-7">
             <header class="pt-4 pb-4 mb-4">
               <div class="subheader">{{document.subtitle}}</div>
               {{document.title}}
@@ -79,7 +79,7 @@
                 {{{body}}}
             </article>
         </div>
-        <div class="col-lg-3 display-md-hidden">
+        <div class="col-lg-3 d-md-none d-lg-block">
           <div class="sticky-top">
             <div id="toc">
               {{#each toc}}
