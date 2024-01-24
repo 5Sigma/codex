@@ -252,7 +252,7 @@ mod tests {
 
     #[test]
     fn test_static_assets() {
-        let project = Project::load("test/fixture", false).unwrap();
+        let project = Project::load(PathBuf::from("test/fixture"), false).unwrap();
         let assets = crate::assets::static_files(&project).unwrap();
         assert!(assets
             .iter()
