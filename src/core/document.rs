@@ -273,7 +273,7 @@ impl Document {
             }
             Node::Text(text) => text.value.clone(),
             Node::Code(code) => {
-                let mut s = String::from("<pre><code>");
+                let mut highlighted_str = String::new();
                 if let Some(config) = code
                     .lang
                     .as_ref()
@@ -287,21 +287,40 @@ impl Document {
                     for event in highlights {
                         match event.unwrap() {
                             HighlightEvent::Source { start, end } => {
-                                s.push_str(&html_escape(&code.value[start..end]));
+                                highlighted_str.push_str(&html_escape(&code.value[start..end]));
                             }
                             HighlightEvent::HighlightStart(highlight) => {
-                                s.push_str(&format!("<span class=\"highlight-{}\">", highlight.0));
+                                highlighted_str.push_str(&format!(
+                                    "<span class=\"highlight-{}\">",
+                                    highlight.0
+                                ));
                             }
                             HighlightEvent::HighlightEnd => {
-                                s.push_str("</span>");
+                                highlighted_str.push_str("</span>");
                             }
                         }
                     }
                 } else {
-                    s.push_str(&html_escape(&code.value));
+                    highlighted_str.push_str(&html_escape(&code.value));
                 }
-                s.push_str("</code></pre>");
-                s
+                let lines = highlighted_str
+                    .lines()
+                    .map(|s| s.to_string())
+                    .collect::<Vec<_>>();
+                let template = self.file_path.new_path("_internal/templates/code.html");
+                let data = CodeContext {
+                    lines,
+                    lang: code.lang.clone().unwrap_or_default(),
+                };
+                template
+                    .read()
+                    .map(|d| d.to_vec())
+                    .map_err(crate::Error::from)
+                    .and_then(|d| {
+                        render_template(data, &String::from_utf8(d).unwrap_or_default())
+                            .map_err(crate::Error::from)
+                    })
+                    .unwrap_or_else(|e| format!("<pre>{}</pre>", html_escape(&e.to_string())))
             }
             Node::Math(_) => "".to_string(),
             Node::MdxFlowExpression(exp) => self.apply_expression(&exp.value).unwrap(),
@@ -370,7 +389,15 @@ impl Document {
 
     pub fn apply_expression(&self, exp: &str) -> Result<String> {
         match exp {
-            "id" => Ok(nanoid::nanoid!()),
+            "id" => {
+                let alphabet: [char; 52] = [
+                    'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p',
+                    'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', 'A', 'B', 'C', 'D', 'E', 'F',
+                    'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V',
+                    'W', 'X', 'Y', 'Z',
+                ];
+                Ok(nanoid::nanoid!(5, &alphabet))
+            }
             _ => Ok("".to_string()),
         }
     }
@@ -527,6 +554,12 @@ pub struct DataContext {
     pub body: String,
     pub project: crate::ProjectDetails,
     pub toc: Vec<TocEntry>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Default)]
+pub struct CodeContext {
+    lines: Vec<String>,
+    lang: String,
 }
 
 /// A table of contents entry

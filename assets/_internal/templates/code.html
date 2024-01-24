@@ -1,0 +1,32 @@
+<div class="code-block">
+<div class="code-header">{{lang}}</div>
+<pre id="pre{{id}}">{{#each lines}}<code>{{{this}}}</code>
+{{/each}}</pre>
+<div id="footer_{{id}}" class="code-footer p-2">
+</div>
+</div>
+
+<script>
+  (function() {
+    let pre = document.querySelector("pre#{{id}}");
+    let code = "";
+    document.querySelectorAll("#pre{{id}} code").forEach((block) => {
+      code += block.innerText + "\n";
+    });
+    let footer = document.querySelector("#footer_{{id}}");
+    if (navigator.clipboard) {
+      let button = document.createElement("button");
+      button.className = "btn btn-dark btn-sm fw-bold"
+
+      button.innerText = "Copy";
+      footer.appendChild(button);
+
+      button.addEventListener("click", async () => {
+      button.innerText = "Copied!";
+      setTimeout(function() {button.innerText = "Copy"}, 2000);
+      navigator.clipboard.writeText(code);
+      });
+    }
+  }());
+</script>
+
