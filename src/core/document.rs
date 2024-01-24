@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, time::SystemTime};
 
 use handlebars::html_escape;
 use markdown::{
@@ -169,6 +169,12 @@ impl Document {
         Self::parse(project, file_path, &content)
     }
 
+    pub fn last_modified(&self) -> Result<String> {
+        let file_time = std::fs::metadata(self.file_path.disk_path())?.modified()?;
+        let dt: chrono::DateTime<chrono::Local> = chrono::DateTime::from(file_time);
+        Ok(dt.to_utc().format("%Y-%m-%dT%H:%M:%S%z").to_string())
+    }
+
     /// Get the HTML content of the page
     pub fn page_content(&self, project: &crate::Project) -> Result<String> {
         let sitemap = (&project.root_folder).into();
@@ -178,6 +184,7 @@ impl Document {
             sitemap,
             project: project.details.clone(),
             toc: self.toc.clone(),
+            modified: self.last_modified().ok(),
         };
         render_template(
             data,
@@ -554,6 +561,7 @@ pub struct DataContext {
     pub body: String,
     pub project: crate::ProjectDetails,
     pub toc: Vec<TocEntry>,
+    pub modified: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Default)]
