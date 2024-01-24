@@ -3,7 +3,6 @@ title: Alert Panel
 subtitle: Component
 ---
 
-
 # Usage
 
 The alert component can be used to display various alert panels.

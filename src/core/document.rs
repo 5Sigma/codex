@@ -1,4 +1,4 @@
-use std::{collections::HashMap, path::PathBuf};
+use std::collections::HashMap;
 
 use handlebars::html_escape;
 use markdown::{
@@ -8,7 +8,7 @@ use markdown::{
 use serde::{Deserialize, Serialize};
 use tree_sitter_highlight::{HighlightConfiguration, HighlightEvent, Highlighter};
 
-use crate::{render_template, Project, Result};
+use crate::{assets::CodexPath, render_template, Project, Result};
 
 /// The names of the classes for syntax highlighting
 /// This is used to highlight code blocks
@@ -54,6 +54,8 @@ pub struct FrontMatter {
     /// A list of tags for the document
     tags: Vec<String>,
     menu_position: i32,
+    /// Whether or not the document should be excluded from the site map
+    menu_exclude: bool,
 }
 
 /// A document or page in the project
@@ -61,7 +63,7 @@ pub struct FrontMatter {
 #[derive(serde::Deserialize, serde::Serialize, Clone)]
 pub struct Document {
     /// The path to the document
-    pub file_path: PathBuf,
+    pub file_path: CodexPath,
     /// The front matter of the document
     pub frontmatter: FrontMatter,
     /// The HTML body of the document
@@ -69,9 +71,9 @@ pub struct Document {
     /// The table of contents of the document
     pub toc: Vec<TocEntry>,
     /// The URL of the document
-    pub url: String,
-    /// The URL of the document
     pub base_url: String,
+    // url of the page
+    pub url: String,
 }
 
 impl std::fmt::Debug for Document {
@@ -79,8 +81,6 @@ impl std::fmt::Debug for Document {
         f.debug_struct("Document")
             .field("file_path", &self.file_path)
             .field("frontmatter", &self.frontmatter)
-            .field("toc", &self.toc)
-            .field("url", &self.url)
             .field("base_url", &self.base_url)
             .finish()
     }
@@ -98,7 +98,7 @@ impl Document {
     /// This will return an error if the markdown is invalid or if the front matter is invalid
     /// # See Also
     /// * [`Document::parse_file`] - Parse a markdown file into a document
-    pub fn parse(project: &Project, file_path: PathBuf, content: &str) -> Result<Self> {
+    pub fn parse(project: &Project, file_path: CodexPath, content: &str) -> Result<Self> {
         let parser_options = markdown::ParseOptions {
             constructs: markdown::Constructs {
                 code_indented: false,
@@ -145,7 +145,7 @@ impl Document {
             frontmatter,
             body: "".to_string(),
             toc,
-            url: file_path.display().to_string(),
+            url: file_path.document_url(),
             base_url: project.details.base_url.clone(),
             file_path,
         };
@@ -164,12 +164,8 @@ impl Document {
     /// # Errors
     /// This will return an error if the markdown is invalid or if the front matter is invalid
     /// # Examples
-    pub fn parse_file<P>(project: &Project, file_path: P) -> Result<Self>
-    where
-        P: Into<PathBuf>,
-    {
-        let file_path = file_path.into();
-        let content = std::fs::read_to_string(file_path.clone())?;
+    pub fn parse_file(project: &Project, file_path: CodexPath) -> Result<Self> {
+        let content = String::from_utf8(file_path.read()?.to_vec())?;
         Self::parse(project, file_path, &content)
     }
 
@@ -183,7 +179,16 @@ impl Document {
             project: project.details.clone(),
             toc: self.toc.clone(),
         };
-        render_template(data, &crate::assets::get_str("templates/article.html"))
+        render_template(
+            data,
+            &String::from_utf8(
+                project
+                    .path
+                    .new_path("_internal/templates/article.html")
+                    .read()?
+                    .to_vec(),
+            )?,
+        )
     }
 
     /// Convert a single node to HTML
@@ -238,7 +243,13 @@ impl Document {
             Node::MdxTextExpression(_) => "".to_string(),
             Node::FootnoteReference(_) => "".to_string(),
             Node::Html(_) => "".to_string(),
-            Node::Image(_) => "".to_string(),
+            Node::Image(img) => {
+                format!(
+                    r#"<img class="img-fluid" src="{}" title="{}""#,
+                    img.url,
+                    img.title.clone().unwrap_or_default()
+                )
+            }
             Node::ImageReference(_) => "".to_string(),
             Node::Link(link) => {
                 if link.url.starts_with('/') {
@@ -335,24 +346,26 @@ impl Document {
         attrs: &[markdown::mdast::AttributeContent],
         children: &[Node],
     ) -> Result<String> {
-        let template = match name {
-            "Alert" => crate::assets::get_str("components/alert.html"),
-            "Field" => crate::assets::get_str("components/field.html"),
-            _ => String::default(),
-        };
+        let cmp_path = self
+            .file_path
+            .new_path(format!("_internal/components/{}.html", name.to_lowercase()));
 
-        let mut data = HashMap::new();
-        for attr in attrs {
-            if let AttributeContent::Property(MdxJsxAttribute {
-                name,
-                value: Some(AttributeValue::Literal(value)),
-            }) = attr
-            {
-                data.insert(name.to_string(), value.to_string());
+        if cmp_path.exists() {
+            let mut data = HashMap::new();
+            for attr in attrs {
+                if let AttributeContent::Property(MdxJsxAttribute {
+                    name,
+                    value: Some(AttributeValue::Literal(value)),
+                }) = attr
+                {
+                    data.insert(name.to_string(), value.to_string());
+                }
             }
+            data.insert("children".to_string(), self.all_to_html(children));
+            render_template(data, &String::from_utf8(cmp_path.read()?.to_vec())?)
+        } else {
+            Ok("<pre>Unknown Component</pre>".to_string())
         }
-        data.insert("children".to_string(), self.all_to_html(children));
-        render_template(data, &template)
     }
 
     pub fn apply_expression(&self, exp: &str) -> Result<String> {
@@ -541,7 +554,12 @@ pub struct SiteMapFolder {
 
 impl From<&crate::Folder> for SiteMapFolder {
     fn from(folder: &crate::Folder) -> Self {
-        let mut pages = folder.documents.clone();
+        let mut pages = folder
+            .documents
+            .iter()
+            .filter(|d| !d.frontmatter.menu_exclude)
+            .cloned()
+            .collect::<Vec<_>>();
 
         pages.sort_by_key(|p| (p.frontmatter.menu_position, p.frontmatter.title.clone()));
 

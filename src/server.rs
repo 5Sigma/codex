@@ -1,5 +1,4 @@
 use core::Project;
-use std::path::PathBuf;
 
 use tiny_http::{Request, Response, Server};
 
@@ -30,12 +29,12 @@ pub fn serve(project_path: String) {
         let url = request.url().to_string();
         if url == "/" {
             handler.handle_file(request);
-        } else if core::assets::exists(
-            &PathBuf::from("static")
-                .join(request.url().trim_matches('/'))
-                .display()
-                .to_string(),
-        ) {
+        } else if handler
+            .project
+            .path
+            .from_url(&format!("/static{}", request.url()))
+            .exists()
+        {
             handler.handle_static(request);
             // output_log(&url, now.elapsed());
         } else {
@@ -48,10 +47,15 @@ pub fn serve(project_path: String) {
 impl ServerHandler {
     #[allow(dead_code)]
     pub fn handle_static(&self, request: Request) {
-        let path = &PathBuf::from("static").join(request.url().trim_matches('/'));
-        let f = core::assets::get_bytes(&path.display().to_string());
-        let response = Response::from_data(f);
-        let _ = request.respond(response);
+        let static_path = self
+            .project
+            .path
+            .from_url(&format!("/static{}", request.url()));
+        if let Ok(data) = static_path.read() {
+            let _ = request.respond(Response::from_data(data));
+        } else {
+            let _ = request.respond(Response::from_string("not found").with_status_code(404));
+        }
     }
     pub fn handle_file(&self, request: Request) {
         let url = if request.url() == "/" {

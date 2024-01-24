@@ -30,7 +30,7 @@ On windows Codex can be installed via Power Shell
 irm https://github.com/5Sigma/codex/releases/download/v0.1.0/Codex-installer.ps1 | iex
 ```
 
-## Windows via Codex-installer
+## Windows via installer
 
 An installer is available for windows at [here](https://github.com/5Sigma/codex/releases/latest/download/Codex-x86_64-pc-windows-msvc.zip).
 
@@ -42,7 +42,7 @@ Binary downloads are available in the [Github Release Page](https://github.com/5
 # Setup a new project
 
 To setup a Codex project within another project run `codex init` and specify 
-a project folder. This can be a subfolder of another project. 
+a project folder. This can be a sub folder of another project. 
 
 ```
 codex init support/docs

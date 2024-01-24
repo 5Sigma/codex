@@ -11,7 +11,7 @@ Its primary goal is minimal configuration, quick deployment, and easy
 modification. In order to do this, it is very opinionated by default. However,
 almost all parts of the system can be ejected from defaults and overwritten. 
 This gives the ability to setup quickly with a sane, and recommended, 
-configuration; or reconfigure everything to suite additional needs.   
+configuration; or reconfigure everything to suit additional needs.   
 
 # Philosophy 
 
@@ -25,7 +25,7 @@ the project's version control.
 ## Portable
 
 Codex is meant to build & publish documentation via CI/CD. It is shipped as a 
-single binary that is less than 5mb in size. This makes it easy to download and 
+single binary that is less than 5Mb in size. This makes it easy to download and 
 use within a pipeline.
 
 ## Minimal configuration
@@ -51,7 +51,7 @@ documentation
 ## Complicating markdown for technical writing
 
 There are some additions to markdown to help mitigate its limited styling like
-[CommonMark](https://commonmark.org/) and [Github Flavored Markdown](https://github.github.com/gfm/). These are helpful but don't go far 
+[CommonMark](https://commonmark.org/) and [GitHub Flavored Markdown](https://github.github.com/gfm/). These are helpful but don't go far 
 enough.
 
 Codex makes a choice, good or bad, to add additional complexity to markdown to
@@ -59,7 +59,7 @@ help facilitate more technically structured writing. It still maintains
 backwards compatibility with markdown, but adds an additional 
 _Component Architecture_ based on JSX.
 
-# Frequenty Asked Questions
+# Frequently Asked Questions
 
 > Can the color scheme, themes, and other visual styling by modified.
 
@@ -76,7 +76,7 @@ Currently, it does not.
 > Can custom JSX components be used 
 
 Yes additional components can be written using a handlebars syntax for the 
-component temlate and used in markdown with JSX syntax.
+component template and used in markdown with JSX syntax.
 
 > What kind of documentation is codex suited for.  
 

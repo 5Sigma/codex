@@ -1,0 +1,13 @@
+# Project name
+name: My Project
+# The path relative to the project root where the compiled static site files
+# will be placed
+build_path: dist
+# The URL to the code repository for the project. If specified a link will appear
+# in the site header.
+repo_url: ~
+# The URL to the main project page. If specified a home link will be displayed
+# in the header.
+project_url: ~
+# Base URL can be set if the site is hosted in a sub path.
+base_url: /

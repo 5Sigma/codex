@@ -87,3 +87,11 @@ impl From<StripPrefixError> for Error {
         }
     }
 }
+
+impl From<walkdir::Error> for Error {
+    fn from(value: walkdir::Error) -> Self {
+        Self {
+            message: value.to_string(),
+        }
+    }
+}

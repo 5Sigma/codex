@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
-use crate::{Document, Error, Result};
+use crate::{assets::CodexPath, Document, Result};
 
 #[derive(Debug, Deserialize, Serialize, Default)]
 #[serde(default)]
@@ -15,21 +15,23 @@ pub struct FolderDetails {
 /// A folder in the project.
 /// This is a recursive structure, so it can contain other folders.
 /// It also contains a list of documents.
-#[derive(Debug, Deserialize, Serialize, Default)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct Folder {
     pub name: String,
-    pub path: PathBuf,
+    pub path: CodexPath,
     pub documents: Vec<Document>,
     pub folders: Vec<Folder>,
     pub details: FolderDetails,
 }
 
 impl Folder {
-    pub fn new(name: String, path: PathBuf) -> Self {
+    pub fn new(name: String, path: CodexPath) -> Self {
         Self {
             name,
             path,
-            ..Default::default()
+            documents: vec![],
+            folders: vec![],
+            details: FolderDetails::default(),
         }
     }
     pub fn get_name(&self) -> String {
@@ -74,19 +76,18 @@ impl Default for ProjectDetails {
 pub struct Project {
     pub details: ProjectDetails,
     pub root_folder: Folder,
-    pub path: PathBuf,
+    pub path: CodexPath,
 }
 
 impl Default for Project {
     fn default() -> Self {
         Self {
             details: ProjectDetails::default(),
-            path: PathBuf::from("."),
-            root_folder: Folder {
-                name: String::from("."),
-                path: PathBuf::from("."),
-                ..Default::default()
-            },
+            path: CodexPath::current_dir(),
+            root_folder: Folder::new(
+                "Unnamed".to_string(),
+                CodexPath::new(PathBuf::from("."), PathBuf::from(".")),
+            ),
         }
     }
 }
@@ -111,9 +112,10 @@ impl Project {
         if !project.details.base_url.ends_with('/') {
             project.details.base_url.push('/');
         }
-        project.path = path.clone();
-        project.root_folder.path = path.clone();
-        project.root_folder = project.scan_folder(&path)?;
+        let proj_path = CodexPath::for_project(path.clone());
+        project.path = proj_path.clone();
+        project.root_folder.path = project.path.clone();
+        project.root_folder = project.scan_folder(&proj_path)?;
         Ok(project)
     }
 
@@ -130,29 +132,33 @@ impl Project {
         let path = path.into();
         self.root_folder
             .iter_all_documents()
-            .find(|d| d.file_path == path)
+            .find(|d| d.file_path.disk_path() == path)
     }
 
     pub fn get_document_for_url(&self, url: &str) -> Option<&Document> {
-        self.root_folder.iter_all_documents().find(|d| d.url == url)
+        let url = format!(
+            "/{}",
+            url.strip_prefix(&self.details.base_url).unwrap_or_default()
+        );
+        self.root_folder
+            .iter_all_documents()
+            .find(|d| d.file_path.document_url() == url)
     }
 
-    pub fn scan_folder(&mut self, root_path: &PathBuf) -> Result<Folder> {
-        let folder_name = root_path
-            .file_name()
-            .ok_or_else(|| Error::new("Bad folder name"))?
-            .to_str()
-            .ok_or_else(|| Error::new("Bad folder name"))?;
-        let mut folder = Folder::new(folder_name.into(), root_path.clone());
-        folder.details = std::fs::File::open(root_path.join("group.yml"))
+    pub fn scan_folder(&mut self, root_path: &CodexPath) -> Result<Folder> {
+        let folder_name = root_path.basename().unwrap_or("Unnamed".to_string());
+        let mut folder = Folder::new(folder_name, root_path.clone());
+        folder.details = std::fs::File::open(root_path.disk_path().join("group.yml"))
             .ok()
             .and_then(|f| serde_yaml::from_reader(f).ok())
             .unwrap_or_default();
-        let p = std::path::Path::new(&root_path);
-        for entry in p.read_dir()? {
+        for entry in root_path.disk_path().read_dir()? {
             let entry = entry?;
             let path = entry.path();
             if path.file_name().and_then(|s| s.to_str()) == Some("static") {
+                continue;
+            }
+            if path.file_name().and_then(|s| s.to_str()) == Some("_internal") {
                 continue;
             }
             if path.file_name().and_then(|s| s.to_str()) == Some("dist") {
@@ -163,28 +169,12 @@ impl Project {
             }
 
             if path.is_dir() {
-                folder.folders.push(self.scan_folder(&path.to_path_buf())?);
+                folder
+                    .folders
+                    .push(self.scan_folder(&root_path.new_path(path.to_path_buf()))?);
             } else if path.extension().and_then(|s| s.to_str()) == Some("md") {
-                let mut document = Document::parse_file(self, path.clone())?;
-                document.file_path = path.to_path_buf();
-                let rel_doc_path = if path.file_name().and_then(|s| s.to_str()) == Some("index.md")
-                {
-                    PathBuf::from(&self.details.base_url)
-                        .join(path.parent().unwrap().strip_prefix(&self.path)?)
-                } else {
-                    PathBuf::from(&self.details.base_url)
-                        .join(path.strip_prefix(&self.path)?)
-                        .with_extension("")
-                };
-                document.url = format!(
-                    "/{}",
-                    rel_doc_path
-                        .strip_prefix("/")?
-                        .components()
-                        .map(|c| c.as_os_str().to_str().unwrap())
-                        .collect::<Vec<&str>>()
-                        .join("/")
-                );
+                let file_path = root_path.new_path(&path);
+                let mut document = Document::parse_file(self, file_path)?;
                 document.base_url = self.details.base_url.clone();
                 folder.documents.push(document);
             }
@@ -200,11 +190,14 @@ pub mod tests {
 
     #[test]
     fn project_base_url() {
-        let mut project = Project::load("test/fixture", false).unwrap();
+        let mut project = Project::load(PathBuf::from("test").join("fixture"), false).unwrap();
 
         // Without base url
         let doc = project.get_document_for_url("/elements/root_link").unwrap();
-        assert_eq!(doc.url, "/elements/root_link".to_string());
+        assert_eq!(
+            doc.file_path.document_url(),
+            "/elements/root_link".to_string()
+        );
         assert_eq!(
             doc.body,
             r#"<p><a href="/somewhere/someplace">Test</a></p>"#,
@@ -217,7 +210,10 @@ pub mod tests {
         let doc = project
             .get_document_for_url("/docs/elements/root_link")
             .unwrap();
-        assert_eq!(doc.url, "/docs/elements/root_link".to_string());
+        assert_eq!(
+            doc.file_path.document_url(),
+            "/elements/root_link".to_string()
+        );
         assert_eq!(
             doc.body,
             r#"<p><a href="/docs/somewhere/someplace">Test</a></p>"#,
@@ -229,5 +225,28 @@ pub mod tests {
             .unwrap();
 
         assert_eq!(doc.body, r#"<p><a href="https://example.com">Test</a></p>"#,);
+    }
+
+    #[test]
+    fn project_load_path() {
+        Project::load(PathBuf::from("test").join("fixture"), false).unwrap();
+    }
+
+    #[test]
+    fn component_override() {
+        let project = Project::load(PathBuf::from("test").join("fixture"), false).unwrap();
+        let doc = project
+            .get_document_for_url("/other/override_component")
+            .unwrap();
+        assert_eq!(doc.body.trim(), "Overridden");
+    }
+
+    #[test]
+    fn custom_component() {
+        let project = Project::load(PathBuf::from("test").join("fixture"), false).unwrap();
+        let doc = project
+            .get_document_for_url("/other/custom_component")
+            .unwrap();
+        assert_eq!(doc.body.trim(), "hello Alice");
     }
 }
