@@ -2,7 +2,7 @@ mod server;
 
 use anyhow::Result;
 use core::Project;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use clap::{Parser, Subcommand};
 
@@ -82,15 +82,11 @@ fn build_project(root_path: String) -> Result<()> {
     build_folder(&project, &project.root_folder)?;
 
     for file in core::assets::static_files(&project)? {
-        let source_path = file.source_path();
-        let path = source_path.strip_prefix("static").unwrap();
-
-        let destination = project
-            .path
-            .join(project.details.build_path.clone())
-            .join(path);
-        println!("Writing {}", destination.display());
-        file.write(&project, destination)?;
+        println!("Writing {}", file.root_url());
+        file.write(
+            &PathBuf::from(&project.details.build_path),
+            PathBuf::from("static"),
+        )?;
     }
 
     Ok(())
@@ -101,28 +97,31 @@ fn build_folder(project: &Project, folder: &core::Folder) -> Result<()> {
         build_folder(project, folder)?;
     }
     for document in folder.documents.iter() {
-        build_document(&folder.path, project, document)?;
+        build_document(project, document)?;
     }
     Ok(())
 }
 
-fn build_document(path: &Path, project: &Project, doc: &core::Document) -> Result<()> {
+fn build_document(project: &Project, doc: &core::Document) -> Result<()> {
     let content = doc.page_content(project)?;
-    let file_path = if doc
-        .file_path
-        .file_stem()
-        .map(|s| s == "index")
-        .unwrap_or(false)
-    {
-        PathBuf::from(&project.path)
-            .join(PathBuf::from(&project.details.build_path))
-            .join(path.strip_prefix(&project.root_folder.path)?)
-            .join("index.html")
+    let file_path = if doc.file_path.is_index() {
+        doc.file_path
+            .relative_to(
+                &project
+                    .path
+                    .disk_path()
+                    .join(PathBuf::from(project.details.build_path.clone())),
+            )
+            .with_extension("html")
     } else {
-        PathBuf::from(&project.path)
-            .join(PathBuf::from(&project.details.build_path))
-            .join(path.strip_prefix(&project.root_folder.path)?)
-            .join(doc.file_path.file_stem().unwrap())
+        doc.file_path
+            .relative_to(
+                &project
+                    .path
+                    .disk_path()
+                    .join(PathBuf::from(project.details.build_path.clone())),
+            )
+            .with_extension("")
             .join("index.html")
     };
 

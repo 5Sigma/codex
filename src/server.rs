@@ -1,5 +1,4 @@
-use core::Project;
-use std::path::{Path, PathBuf};
+use core::{assets::CodexPath, Project};
 
 use tiny_http::{Request, Response, Server};
 
@@ -30,12 +29,11 @@ pub fn serve(project_path: String) {
         let url = request.url().to_string();
         if url == "/" {
             handler.handle_file(request);
-        } else if core::assets::exists(
-            &PathBuf::from("static")
-                .join(request.url().trim_matches('/'))
-                .display()
-                .to_string(),
-        ) || convert_static_url_to_path(&handler.project.path, &url).exists()
+        } else if handler
+            .project
+            .path
+            .from_url(&format!("/static{}", request.url()))
+            .exists()
         {
             handler.handle_static(request);
             // output_log(&url, now.elapsed());
@@ -49,18 +47,14 @@ pub fn serve(project_path: String) {
 impl ServerHandler {
     #[allow(dead_code)]
     pub fn handle_static(&self, request: Request) {
-        let path = &PathBuf::from("static").join(request.url().trim_matches('/'));
-        if self.project.path.join(path).exists() {
-            if let Ok(f) = std::fs::read(self.project.path.join(path)) {
-                let response = Response::from_data(f);
-                let _ = request.respond(response);
-            } else {
-                let _ = request.respond(Response::from_string("Failed to read data"));
-            }
+        let static_path = self
+            .project
+            .path
+            .from_url(&format!("/static{}", request.url()));
+        if let Ok(data) = static_path.read() {
+            let _ = request.respond(Response::from_data(data));
         } else {
-            let f = core::assets::get_bytes(&path.display().to_string());
-            let response = Response::from_data(f);
-            let _ = request.respond(response);
+            let _ = request.respond(Response::from_string("not found").with_status_code(404));
         }
     }
     pub fn handle_file(&self, request: Request) {
@@ -102,30 +96,4 @@ fn output_log(url: &str, time: std::time::Duration) {
     let time = dim.apply_to(format!("{}ms", time.as_millis()));
     let url = bold.apply_to(url);
     let _ = term.write_line(&format!("[{}] {}", time, url));
-}
-
-fn convert_static_url_to_path(root: &Path, url: &str) -> PathBuf {
-    url.split('/')
-        .fold(root.join("static"), |acc, t| acc.join(t))
-}
-
-#[cfg(test)]
-mod tests {
-    use std::path::PathBuf;
-
-    use crate::server::convert_static_url_to_path;
-
-    #[test]
-    fn test_convert_static_url() {
-        assert_eq!(
-            convert_static_url_to_path(&PathBuf::from("/"), "/subpath/something.css")
-                .display()
-                .to_string(),
-            PathBuf::from("/static")
-                .join("subpath")
-                .join("something.css")
-                .display()
-                .to_string(),
-        );
-    }
 }
