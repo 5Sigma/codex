@@ -258,7 +258,15 @@ mod tests {
             .iter()
             .map(|a| a.disk_path().display().to_string())
             .collect::<Vec<_>>()
-            .contains(&"test/fixture/static/nested/object".to_string()));
+            .contains(
+                &PathBuf::from("test")
+                    .join("fixture")
+                    .join("static")
+                    .join("nested")
+                    .join("object")
+                    .display()
+                    .to_string()
+            ));
     }
 
     #[test]
