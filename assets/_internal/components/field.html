@@ -6,6 +6,12 @@
       {{name}}
     </a>
     <div class="d-inline-block me-3 ps-3 p-2">
+      {{#if deprecated}}
+        <span 
+          class="badge rounded-pill bg-danger">
+          deprecated
+        </span>
+      {{/if}}
       {{#if required}}
         <span 
           class="badge rounded-pill bg-danger">
@@ -32,6 +38,13 @@
       {{#if default}}
         <hr/>
         <span class="fw-bold d-inline-block me-3">Default value:</span>{{default}}
+      {{/if}}
+      {{#if deprecated}}
+        <hr/>
+        <div class="alert alert-danger text-center"> 
+        This field is has been deprecated and will be removed in a future 
+        version.
+        </div>
       {{/if}}
     </div>
   </div>

@@ -23,6 +23,10 @@ The type name of the field. This can be omitted if not applicable.
 If present the type will be converted into a link to the url specified here.
 </Field>
 
+<Field name="deprecated" type="Bool">
+If true the field will be marked with a deprecation warning and badge. 
+</Field>
+
 # Example
 
 ```HTML
@@ -34,11 +38,26 @@ The type name of the field. This can be omitted if not applicable.
 </Field>
 ```
 <Field 
-    name="type" 
+    name="basic_field" 
     type="String" 
     type_link="https://en.wikipedia.org/wiki/String_(computer_science)">
-The type name of the field. This can be omitted if not applicable.
+    Here is an example field with a type link
 </Field>
 
+
+```HTML
+<Field 
+    name="type" 
+    type="String" 
+    deprecated="true">
+    Here is an example field that has been deprecated.
+</Field>
+```
+<Field 
+    name="deprecated_field" 
+    type="String" 
+    deprecated="true">
+    Here is an example field that has been deprecated.
+</Field>
 
 
