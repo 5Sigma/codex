@@ -275,9 +275,13 @@ impl Document {
                     .unwrap_or_else(|e| format!("<pre>{}</pre>", html_escape(&e.to_string())))
             }
             Node::Math(_) => "".to_string(),
-            Node::MdxFlowExpression(exp) => self.apply_expression(&exp.value).unwrap(),
+            Node::MdxFlowExpression(exp) => self
+                .apply_expression(&exp.value)
+                .unwrap_or_else(|e| format!("<pre>{}</pre>", html_escape(&e.to_string()))),
             Node::Heading(h) => {
-                let text = heading_text(h).unwrap();
+                let Some(text) = heading_text(h) else {
+                    return "<pre>No header text found</pre>".to_string();
+                };
                 let slug = slug(&text);
                 let tag = format!("h{}", h.depth + 3);
                 let html = h.children.iter().fold(String::new(), |acc, child| {

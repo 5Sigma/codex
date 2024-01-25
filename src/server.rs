@@ -20,7 +20,7 @@ pub fn serve(project_path: String) {
     ));
     let server = Server::http(server_url).unwrap();
     let mut handler = ServerHandler {
-        project: Project::load(project_path, true).unwrap(),
+        project: Project::load(project_path, true).expect("Failed to load project"),
     };
 
     for request in server.incoming_requests() {
@@ -65,11 +65,14 @@ impl ServerHandler {
             request.url().trim_end_matches('/')
         };
         if let Some(doc) = self.project.get_document_for_url(url) {
-            let response = Response::from_string(doc.page_content(&self.project).unwrap())
-                .with_header(tiny_http::Header {
-                    field: "Content-Type".parse().unwrap(),
-                    value: "text/html".parse().unwrap(),
-                });
+            let page_content = match doc.page_content(&self.project) {
+                Ok(i) => i,
+                Err(e) => format!("<pre>{}</pre>", e),
+            };
+            let response = Response::from_string(page_content).with_header(tiny_http::Header {
+                field: "Content-Type".parse().unwrap(),
+                value: "text/html".parse().unwrap(),
+            });
             let _ = request.respond(response);
         } else {
             let ctx = core::DataContext {
