@@ -55,7 +55,7 @@
               {{#each sitemap.pages}}
                 {{#if this.frontmatter.title}}
                 <a class="text-nowrap pe-3 fs-6 fw-light text-capitalie d-block link-underline-opacity-0 link-dark link-underline-opacity-75-hover" 
-                   href="{{this.url}}">{{this.frontmatter.title}}</a>
+                   href="{{join_url ../project.base_url this.url}}">{{this.frontmatter.title}}</a>
                 {{/if}}
               {{/each}}
               </div>
@@ -64,7 +64,7 @@
                 <div class="text-capitalize fw-bold fs-7">{{this.name}}</div>
                 {{#each this.pages}}
                   <a class="text-nowrap pe-3 fs-6 fw-light text-capitalie d-block link-underline-opacity-0 link-dark link-underline-opacity-75-hover" 
-                   href="{{this.url}}">{{this.frontmatter.title}}</a>
+                     href="{{join_url ../../project.base_url this.url}}">{{this.frontmatter.title}}</a>
                 {{/each}}
               </div>
             {{/each}}

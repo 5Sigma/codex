@@ -49,7 +49,6 @@ pub struct Document {
     pub toc: Vec<TocEntry>,
     /// The URL of the document
     pub base_url: String,
-    // url of the page
     pub url: String,
 }
 
