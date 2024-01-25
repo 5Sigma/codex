@@ -372,6 +372,7 @@ impl Document {
                 }
             }
             data.insert("children".to_string(), self.all_to_html(children));
+            data.insert("base_url".to_string(), self.base_url.clone());
             render_template(data, &String::from_utf8(cmp_path.read()?.to_vec())?)
         } else {
             Ok("<pre>Unknown Component</pre>".to_string())

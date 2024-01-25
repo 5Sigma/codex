@@ -55,11 +55,15 @@ fn join_url(
 ) -> HelperResult {
     let u1 = h.param(0).and_then(|v| v.value().as_str()).unwrap_or("");
     let u2 = h.param(1).and_then(|v| v.value().as_str()).unwrap_or("");
-    let r = format!(
-        "{}/{}",
-        u1.trim_end_matches('/'),
-        u2.trim_start_matches('/')
-    );
+    let r = if u2.starts_with('/') {
+        format!(
+            "{}/{}",
+            u1.trim_end_matches('/'),
+            u2.trim_start_matches('/')
+        )
+    } else {
+        u2.to_string()
+    };
     let _ = out.write(&r.to_string());
     Ok(())
 }
