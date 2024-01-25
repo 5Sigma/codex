@@ -43,8 +43,6 @@ pub struct Document {
     pub file_path: CodexPath,
     /// The front matter of the document
     pub frontmatter: FrontMatter,
-    /// The HTML body of the document
-    pub body: String,
     /// The table of contents of the document
     pub toc: Vec<TocEntry>,
     /// The URL of the document
@@ -64,18 +62,7 @@ impl std::fmt::Debug for Document {
 }
 
 impl Document {
-    /// Parse a markdown file into a documents
-    /// This will parse the front matter, generate the table of contents, and convert the markdown to HTML
-    /// # Arguments
-    /// * `file_path` - The path to the markdown file!
-    /// * `content` - The content of the markdown file
-    /// # Returns
-    /// A `Result` containing the parsed document
-    /// # Errors
-    /// This will return an error if the markdown is invalid or if the front matter is invalid
-    /// # See Also
-    /// * [`Document::parse_file`] - Parse a markdown file into a document
-    pub fn parse(project: &Project, file_path: CodexPath, content: &str) -> Result<Self> {
+    fn parse(file_path: &CodexPath) -> Result<Node> {
         let parser_options = markdown::ParseOptions {
             constructs: markdown::Constructs {
                 code_indented: false,
@@ -98,9 +85,17 @@ impl Document {
             ..markdown::ParseOptions::mdx()
         };
 
+        let content = String::from_utf8(file_path.read()?.to_vec())?;
+
         // Parse the markdown into an AST
-        let ast = markdown::to_mdast(content, &parser_options)?;
+        let ast = markdown::to_mdast(&content, &parser_options)?;
+        Ok(ast)
+    }
+
+    pub fn load(project: &Project, file_path: CodexPath) -> Result<Self> {
         // Generate the table of contents
+
+        let ast = Self::parse(&file_path)?;
         let toc = toc(ast
             .children()
             .ok_or(crate::Error::new("Invalid markdown".to_string()))?);
@@ -119,32 +114,13 @@ impl Document {
             })
             .unwrap_or_default();
 
-        let mut doc = Document {
+        Ok(Document {
             frontmatter,
-            body: "".to_string(),
             toc,
             url: file_path.document_url(),
             base_url: project.details.base_url.clone(),
             file_path,
-        };
-        // Convert the AST to HTML
-        doc.body = doc.to_html(&ast);
-
-        Ok(doc)
-    }
-
-    /// Parse a markdown file into a document
-    /// This will parse the front matter, generate the table of contents, and convert the markdown to HTML
-    /// # Arguments
-    /// * `file_path` - The path to the markdown file!
-    /// # Returns
-    /// A `Result` containing the parsed document
-    /// # Errors
-    /// This will return an error if the markdown is invalid or if the front matter is invalid
-    /// # Examples
-    pub fn parse_file(project: &Project, file_path: CodexPath) -> Result<Self> {
-        let content = String::from_utf8(file_path.read()?.to_vec())?;
-        Self::parse(project, file_path, &content)
+        })
     }
 
     pub fn last_modified(&self) -> Result<String> {
@@ -153,11 +129,17 @@ impl Document {
         Ok(dt.to_utc().format("%Y-%m-%dT%H:%M:%S%z").to_string())
     }
 
+    pub fn body(&self) -> Result<String> {
+        let ast = Self::parse(&self.file_path)?;
+        let body = self.to_html(&ast);
+        Ok(body)
+    }
+
     /// Get the HTML content of the page
     pub fn page_content(&self, project: &crate::Project) -> Result<String> {
         let sitemap = (&project.root_folder).into();
         let data = DataContext {
-            body: self.body.clone(),
+            body: self.body()?,
             document: self.frontmatter.clone(),
             sitemap,
             project: project.details.clone(),

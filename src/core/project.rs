@@ -174,7 +174,7 @@ impl Project {
                     .push(self.scan_folder(&root_path.new_path(path.to_path_buf()))?);
             } else if path.extension().and_then(|s| s.to_str()) == Some("md") {
                 let file_path = root_path.new_path(&path);
-                let mut document = Document::parse_file(self, file_path)?;
+                let mut document = Document::load(self, file_path)?;
                 document.base_url = self.details.base_url.clone();
                 folder.documents.push(document);
             }
@@ -199,7 +199,7 @@ pub mod tests {
             "/elements/root_link".to_string()
         );
         assert_eq!(
-            doc.body,
+            doc.body().unwrap(),
             r#"<p><a href="/somewhere/someplace">Test</a></p>"#,
         );
         assert_eq!(project.details.base_url, "/".to_string());
@@ -215,7 +215,7 @@ pub mod tests {
             "/elements/root_link".to_string()
         );
         assert_eq!(
-            doc.body,
+            doc.body().unwrap(),
             r#"<p><a href="/docs/somewhere/someplace">Test</a></p>"#,
         );
         assert_eq!(project.details.base_url, "/docs/".to_string());
@@ -224,7 +224,10 @@ pub mod tests {
             .get_document_for_url("/docs/elements/external_link")
             .unwrap();
 
-        assert_eq!(doc.body, r#"<p><a href="https://example.com">Test</a></p>"#,);
+        assert_eq!(
+            doc.body().unwrap(),
+            r#"<p><a href="https://example.com">Test</a></p>"#,
+        );
     }
 
     #[test]
@@ -238,7 +241,7 @@ pub mod tests {
         let doc = project
             .get_document_for_url("/other/override_component")
             .unwrap();
-        assert_eq!(doc.body.trim(), "Overridden");
+        assert_eq!(doc.body().unwrap().trim(), "Overridden");
     }
 
     #[test]
@@ -247,6 +250,6 @@ pub mod tests {
         let doc = project
             .get_document_for_url("/other/custom_component")
             .unwrap();
-        assert_eq!(doc.body.trim(), "hello Alice");
+        assert_eq!(doc.body().unwrap().trim(), "hello Alice");
     }
 }
