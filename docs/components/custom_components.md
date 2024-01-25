@@ -24,7 +24,7 @@ _project_root_/_internal/components/hello.html
 
 The component code is simple html we will use:
 
-```html
+```HTML
 <h4>Hello, {{name}}</h4>
 ```
 
@@ -35,7 +35,7 @@ component template and can be used with Handlebar syntax.
 
 Now create a document at _project_root_/hello_page.md to use the component
 
-```markdown
+```Markdown
 # Component test
 This is a test of the hello component:
 <Hello name="Alice" />
@@ -50,7 +50,7 @@ precedence over default ones.
 For instance to override the alert component we could create 
 _project_root_/_internal/alert.html with:
 
-```html
+```HTML
 <div class="my-alert">
     {{#if title}}
         <div class="my-title">{{title}}</div>
@@ -66,7 +66,7 @@ Components may have children which allows them to wrap other components or
 markdown blocks. The alert component above uses the children variable.
 A component with children is used like this:
 
-```markdown
+```Markdown
 <Alert title="My Title">
     # A header
 

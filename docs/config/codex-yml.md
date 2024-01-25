@@ -38,7 +38,7 @@ project root.
 
 # Example Configuration
 
-```yaml
+```YAML
 name: My Project
 build_path: dist
 repo_url: https://github.com/me/project

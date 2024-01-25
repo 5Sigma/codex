@@ -24,7 +24,7 @@ A visual theme for the alert. Valid options are:
 
 ## A basic alert
 
-```html
+```HTML
 <Alert style="danger">
 An example alert message
 </Alert>
@@ -37,7 +37,7 @@ An Example alert message
 
 ## An alert with a heading
 
-```html
+```HTML
 <Alert style="warn" title="Be careful doing this">
 A reason why doing *that* is bad.
 </Alert>
@@ -49,7 +49,7 @@ A reason why doing *that* is bad.
 
 ## Complex markdown inside alerts
 
-```html
+```HTML
 <Alert style="info" title="More information">
 Here are some things to be aware of
 - Item number 1 

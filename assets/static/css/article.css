@@ -41,151 +41,37 @@ article > h4 {
 
 .code-block {
   margin: 30px 0;
-  background: #444;
+  padding: 4px 8px;
+  background: #161616;
   width: 100%;
   color: #f5f5f5;
   border-radius: 4px;
   overflow-x: auto;
 }
 
-.code-block pre :before {
-    counter-reset: listing;
-}
-.code-block pre code {
-    counter-increment: line;
-}
-.code-block pre code:before {
-    color: #ccc;
-    background: #555;
-    width: 3em;
-    text-align: right;
-    border-right: 1px solid #888;
-    margin-right: 5px;
-    display: inline-block;
-    content: counter(line) " ";
-}
-
 pre {
   margin:0;
-  padding:0;
+  padding:15px;
   display: block;
   font-size: 1em;
 }
 
 code {
-  font-weight: 500;
+  font-weight: 600;
   margin: 0;
   padding: 0;
 }
 
-.code-block .code-header {
-  padding: 2px 15px;
-  text-align: left;
-  font-weight: 600;
-  font-size: 0.8em;
-  border-bottom: 1px solid #888;
-  text-transform: capitalize;
-  height: 2.5em;
-  line-height: 2.0em;
+code.inline {
+  display: inline-block;
 }
-
 
 .code-block .code-footer {
-  border-top: 1px solid #888;
   padding: 2px 5px;
+  margin-top: 4px;
+  margin-bottom: 4px;
   text-align: right;
-}
-
-.highlight-0 {
-  color: #888;  
-}
-
-.highlight-1 { 
-  color: #6688cc;
-}
-
-.highlight-2 {
-  color: #8866cc;
-  font-weight: bold;
-}
-
-.highlight-3 {
-  color: #8866cc;
-}
-
-.highlight-4 {
-  color: #6688cc;
-  font-weight: bold;
-}
-
-.highlight-5 {
-  color: #ccc;
-}
-
-.highlight-6 {
-  color: #eee; 
-}
-
-.highlight-7 {
-  color: #ccc; 
-}
-
-.highlight-8 {
-  color: #cccc33; 
-}
-
-.highlight-9 {
-  color: #ffff44; 
-}
-
-.highlight-10 {
-  color: #33cc33; 
-}
-
-.highlight-11 {
-  color: #33cc33; 
-  font-weight: bold;
-}
-
-.highlight-12 {
-  color: #eee; 
-  font-style: italic;
-}
-
-.highlight-13 {
-  color: #fff; 
-  font-weight: bold;
-}
-
-.highlight-14 {
-  color: #fff; 
-  font-weight: bold;
-}
-
-.highlight-15 {
-  color: #ff99ff; 
-}
-
-.highlight-16 {
-  color: #ff99ff; 
-  font-weight: bold;
-}
-
-.highlight-17 {
-  color: #ff99ff; 
-  font-style: italic;
-}
-
-.highlight-18 {
-  color: #ff8800; 
-}
-
-.highlight-19 {
-  color: #ff3333; 
-}
-
-.highlight-20 {
-  color: #33ff00; 
+  background: #333;
 }
 
 #menu {
@@ -224,3 +110,19 @@ hr {
 .field + .field {
   margin-top: -2px !important;
 }
+
+article a {
+  text-decoration: none;
+} 
+
+.task-item {
+  line-height: 1;
+}
+
+ul {
+  padding-left: 0;
+}
+ul li {
+  margin-left: 20px;
+}
+

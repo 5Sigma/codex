@@ -64,7 +64,7 @@ _project_root_/overview/getting-started.md
 
 This file should have _front matter_ that defines its title, such as:
 
-```markdown
+```Markdown
 ---
 title: Getting started
 ---

@@ -12,7 +12,7 @@ them. Frontmatter is written in [YAML](http://www.yaml.org).
 
 The general format is:
 
-```markdown
+```YAML
 ---
 title: My Page Title
 # other fields
