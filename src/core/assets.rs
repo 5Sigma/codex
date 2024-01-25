@@ -9,7 +9,7 @@ use serde::Serialize;
 
 #[derive(RustEmbed)]
 #[folder = "assets"]
-struct EmbeddedAsset;
+pub struct EmbeddedAsset;
 
 pub fn get_str(name: &str) -> String {
     EmbeddedAsset::get(name)

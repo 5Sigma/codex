@@ -33,7 +33,7 @@ built and available via direct links.
 
 # Example Configuration
 
-```yaml
+```YAML
 name: Overview
 menu_position: -1
 ```

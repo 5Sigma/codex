@@ -25,9 +25,9 @@ pub fn serve(project_path: String) {
 
     for request in server.incoming_requests() {
         let now = std::time::Instant::now();
-        let _ = handler.project.reload();
         let url = request.url().to_string();
         if url == "/" {
+            let _ = handler.project.reload();
             handler.handle_file(request);
         } else if handler
             .project
@@ -38,6 +38,7 @@ pub fn serve(project_path: String) {
             handler.handle_static(request);
             // output_log(&url, now.elapsed());
         } else {
+            let _ = handler.project.reload();
             handler.handle_file(request);
             output_log(&url, now.elapsed());
         }

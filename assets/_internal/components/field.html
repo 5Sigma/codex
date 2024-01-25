@@ -1,11 +1,10 @@
-<div class="mb-1 mt-4 position-relative field">
+<div class="mb-1 mt-4 field">
   <div class="d-flex justify-content-between ps-2 pe-2 fs-6 border align-items-stretch">
-    <a class="fw-bold link-dark link-underline-opacity-0 link-dark link-underline-opacity-75-hover p-2 stretched-link" 
+    <a class="fw-bold link-dark link-underline-opacity-0 link-dark link-underline-opacity-75-hover p-2 stretched-link position-relative flex-fill" 
       data-bs-toggle="collapse" 
       href="#{{id}}">
       {{name}}
     </a>
-    <div class="flex-fill"></div>
     <div class="d-inline-block me-3 ps-3 p-2">
       {{#if required}}
         <span 
@@ -19,7 +18,13 @@
         </span>
       {{/if}}
     </div>
-    <span class="fst-italic fw-bold p-2 text-center">{{type}}</span>
+    <span class="fw-bold p-2 text-center position-relative">
+      {{#if type_link}}
+      <a class="text-dark stretched-link" href="{{type_link}}">{{type}}</a><i class="ms-2 fal fa-chevron-right"></i>
+      {{else}}
+        {{type}}
+      {{/if}}
+    </span>
   </div>
   <div class="collapse" id={{id}}>
     <div class="p-2">

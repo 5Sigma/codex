@@ -6,37 +6,14 @@ use markdown::{
     MdxExpressionKind, MdxSignal,
 };
 use serde::{Deserialize, Serialize};
-use tree_sitter_highlight::{HighlightConfiguration, HighlightEvent, Highlighter};
+use syntect::{
+    easy::HighlightLines,
+    highlighting::ThemeSet,
+    html::{styled_line_to_highlighted_html, IncludeBackground},
+    parsing::SyntaxSet,
+};
 
-use crate::{assets::CodexPath, render_template, Project, Result};
-
-/// The names of the classes for syntax highlighting
-/// This is used to highlight code blocks
-/// # See Also
-/// * [`build_highlighter_config`] - Build a highlighter configuration for the given language
-const HIGHLIGHT_NAMES: &[&str] = &[
-    "attribute",
-    "constant",
-    "function.builtin",
-    "function",
-    "keyword",
-    "operator",
-    "property",
-    "punctuation",
-    "punctuation.bracket",
-    "punctuation.delimiter",
-    "string",
-    "string.special",
-    "tag",
-    "type",
-    "type.builtin",
-    "variable",
-    "variable.builtin",
-    "variable.parameter",
-    "number",
-    "true",
-    "false",
-];
+use crate::{assets::CodexPath, render_template, Error, Project, Result};
 
 /// The front matter of a document
 /// This is used to store metadata about a document
@@ -110,6 +87,7 @@ impl Document {
                 mdx_expression_flow: true,
                 mdx_expression_text: true,
                 gfm_task_list_item: true,
+                gfm_strikethrough: true,
                 mdx_jsx_text: true,
                 gfm_table: true,
                 ..Default::default()
@@ -241,9 +219,15 @@ impl Document {
             Node::Toml(_) => "".to_string(),
             Node::Yaml(_) => "".to_string(),
             Node::Break(_) => "".to_string(),
-            Node::InlineCode(_) => "".to_string(),
+            Node::InlineCode(c) => {
+                format!(r#"<code class="inline">{}</code>"#, c.value)
+            }
             Node::InlineMath(_) => "".to_string(),
-            Node::Delete(_) => "".to_string(),
+            Node::Delete(d) => self.wrap_nodes(
+                "<span style=\"text-decoration: line-through\">",
+                "</span>",
+                &d.children,
+            ),
             Node::Emphasis(em) => {
                 self.wrap_nodes(r#"<span class="fst-italic">"#, "</span>", &em.children)
             }
@@ -280,40 +264,19 @@ impl Document {
             }
             Node::Text(text) => text.value.clone(),
             Node::Code(code) => {
-                let mut highlighted_str = String::new();
-                if let Some(config) = code
-                    .lang
-                    .as_ref()
-                    .and_then(|lang| build_highlighter_config(lang))
-                {
-                    let mut highlighter = Highlighter::new();
-                    let highlights = highlighter
-                        .highlight(&config, code.value.as_bytes(), None, |_| None)
-                        .unwrap();
-
-                    for event in highlights {
-                        match event.unwrap() {
-                            HighlightEvent::Source { start, end } => {
-                                highlighted_str.push_str(&html_escape(&code.value[start..end]));
-                            }
-                            HighlightEvent::HighlightStart(highlight) => {
-                                highlighted_str.push_str(&format!(
-                                    "<span class=\"highlight-{}\">",
-                                    highlight.0
-                                ));
-                            }
-                            HighlightEvent::HighlightEnd => {
-                                highlighted_str.push_str("</span>");
-                            }
-                        }
-                    }
+                let lines = if let Some(ref lang) = code.lang {
+                    highlight(lang, code.value.trim()).unwrap_or(
+                        html_escape(&code.value)
+                            .lines()
+                            .map(|s| s.to_string())
+                            .collect::<Vec<_>>(),
+                    )
                 } else {
-                    highlighted_str.push_str(&html_escape(&code.value));
-                }
-                let lines = highlighted_str
-                    .lines()
-                    .map(|s| s.to_string())
-                    .collect::<Vec<_>>();
+                    html_escape(&code.value)
+                        .lines()
+                        .map(|s| s.to_string())
+                        .collect::<Vec<_>>()
+                };
                 let template = self.file_path.new_path("_internal/templates/code.html");
                 let data = CodeContext {
                     lines,
@@ -348,7 +311,29 @@ impl Document {
             Node::ThematicBreak(_) => "<hr/>".to_string(),
             Node::TableRow(node) => self.wrap_nodes("<tr>", "</tr>", &node.children),
             Node::TableCell(node) => self.wrap_nodes("<td>", "</td>", &node.children),
-            Node::ListItem(li) => self.wrap_nodes("<li>", "</li>", &li.children),
+            Node::ListItem(li) => {
+                if let Some(checked) = li.checked {
+                    if checked {
+                        self.wrap_nodes(
+                            r#"<div class="d-flex fw-bold task-item">
+                                <i class="text-success me-2 fal fa-check"></i>
+                                <div>"#,
+                            "</div></div>",
+                            &li.children,
+                        )
+                    } else {
+                        self.wrap_nodes(
+                            r#"<div class="d-flex task-item">
+                                <i class="text-danger me-2 fal fa-xmark"></i>
+                                <div>"#,
+                            "</div></div>",
+                            &li.children,
+                        )
+                    }
+                } else {
+                    self.wrap_nodes("<li>", "</li>", &li.children)
+                }
+            }
             Node::Definition(_) => "".to_string(),
             Node::Paragraph(p) => self.wrap_nodes("<p>", "</p>", &p.children),
         }
@@ -412,88 +397,6 @@ impl Document {
 
 pub fn parse_expression(_value: &str, _kind: &MdxExpressionKind) -> MdxSignal {
     MdxSignal::Ok
-}
-
-/// Build a highlighter configuration for the given language
-fn build_highlighter_config(lang: &str) -> Option<HighlightConfiguration> {
-    let mut config = match lang {
-        "bash" | "sh" => HighlightConfiguration::new(
-            tree_sitter_bash::language(),
-            tree_sitter_bash::HIGHLIGHT_QUERY,
-            "",
-            "",
-        )
-        .ok(),
-        "html" => HighlightConfiguration::new(
-            tree_sitter_html::language(),
-            tree_sitter_html::HIGHLIGHT_QUERY,
-            "",
-            "",
-        )
-        .ok(),
-        "json" => HighlightConfiguration::new(
-            tree_sitter_json::language(),
-            tree_sitter_json::HIGHLIGHT_QUERY,
-            "",
-            "",
-        )
-        .ok(),
-        "c" => HighlightConfiguration::new(
-            tree_sitter_c::language(),
-            tree_sitter_c::HIGHLIGHT_QUERY,
-            "",
-            "",
-        )
-        .ok(),
-        "cpp" | "c++" => HighlightConfiguration::new(
-            tree_sitter_cpp::language(),
-            tree_sitter_cpp::HIGHLIGHT_QUERY,
-            "",
-            "",
-        )
-        .ok(),
-        "rust" => HighlightConfiguration::new(
-            tree_sitter_rust::language(),
-            tree_sitter_rust::HIGHLIGHT_QUERY,
-            "",
-            "",
-        )
-        .ok(),
-        "javascript" | "js" => HighlightConfiguration::new(
-            tree_sitter_javascript::language(),
-            tree_sitter_javascript::HIGHLIGHT_QUERY,
-            "",
-            "",
-        )
-        .ok(),
-        "python" => HighlightConfiguration::new(
-            tree_sitter_python::language(),
-            tree_sitter_python::HIGHLIGHT_QUERY,
-            "",
-            "",
-        )
-        .ok(),
-        "lua" => HighlightConfiguration::new(
-            tree_sitter_lua::language(),
-            tree_sitter_lua::HIGHLIGHTS_QUERY,
-            "",
-            "",
-        )
-        .ok(),
-        "css" => HighlightConfiguration::new(
-            tree_sitter_css::language(),
-            tree_sitter_css::HIGHLIGHTS_QUERY,
-            "",
-            "",
-        )
-        .ok(),
-        "" => None,
-        _ => None,
-    };
-    if let Some(ref mut c) = config {
-        c.configure(HIGHLIGHT_NAMES)
-    }
-    config
 }
 
 /// Generate the table of contents for a list of nodes
@@ -620,4 +523,26 @@ impl From<&crate::Folder> for SiteMapFolder {
             name: folder.get_name(),
         }
     }
+}
+
+pub fn highlight(name: &str, s: &str) -> Result<Vec<String>> {
+    let ts = ThemeSet::load_defaults();
+    let ss = SyntaxSet::load_defaults_newlines();
+    let syn = ss
+        .find_syntax_by_name(name)
+        .ok_or_else(|| Error::new("Syntax not found"))?;
+    let theme = ts
+        .themes
+        .get("Solarized (dark)")
+        .ok_or_else(|| Error::new("Theme not found"))?;
+
+    let mut h = HighlightLines::new(syn, theme);
+    let res = s
+        .lines()
+        .map(|s| {
+            let hl = h.highlight_line(s, &ss).unwrap();
+            styled_line_to_highlighted_html(&hl[..], IncludeBackground::No).unwrap()
+        })
+        .collect::<Vec<_>>();
+    Ok(res)
 }

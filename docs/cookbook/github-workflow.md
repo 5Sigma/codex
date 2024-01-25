@@ -29,7 +29,7 @@ so relative URLs are prefixed with the project name correctly.
 
 Edit docs/codex.yml:
 
-```
+```YAML
 name: My Project Name
 base_url: repo_name
 ```
@@ -44,7 +44,7 @@ The build pipeline will perform the following steps:
 - Publish to GitHub pages
 
 
-```yaml
+```YAML
 name: Publish Documentation
 
 on:

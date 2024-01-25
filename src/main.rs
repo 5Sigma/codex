@@ -60,9 +60,10 @@ fn main() {
                 }
 
                 let config_path = p.join("codex.yml");
-                if let Err(e) =
-                    std::fs::write(config_path, core::assets::get_bytes("scaffold_config.yml"))
-                {
+                if let Err(e) = std::fs::write(
+                    config_path,
+                    core::assets::get_bytes("_internal/templates/scaffold_config.yml"),
+                ) {
                     eprintln!("Couldn't create project configuration: {}", e);
                     std::process::exit(1);
                 }
