@@ -1,6 +1,6 @@
 [package]
 name = "Codex"
-version = "0.3.0"
+version = "0.4.0"
 authors = ["5Sigma <hello@5sigma.io>"]
 description = "Documentation generator and manager"
 edition = "2021"
