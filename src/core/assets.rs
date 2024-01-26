@@ -203,7 +203,7 @@ impl CodexPath {
         self.project_root = root_path.to_path_buf();
     }
 
-    pub fn write(&self, destination_root: &Path, strip: PathBuf) -> Result<()> {
+    pub fn write(&self, destination_root: &Path, strip: PathBuf) -> Result<usize> {
         let dst = self
             .project_root
             .join(destination_root)
@@ -215,17 +215,17 @@ impl CodexPath {
             }
         }
 
-        if self.exists_on_disk() {
-            std::fs::copy(self.disk_path(), dst)?;
+        let size = if self.exists_on_disk() {
+            std::fs::copy(self.disk_path(), dst)? as usize
         } else {
-            std::fs::write(
-                dst,
-                EmbeddedAsset::get(&self.relative_path.to_string_lossy())
-                    .ok_or_else(|| Error::new("Asset not found"))?
-                    .data,
-            )?;
-        }
-        Ok(())
+            let data = EmbeddedAsset::get(&self.relative_path.to_string_lossy())
+                .ok_or_else(|| Error::new("Asset not found"))?
+                .data;
+            let l = data.len();
+            std::fs::write(dst, data)?;
+            l
+        };
+        Ok(size)
     }
 }
 
