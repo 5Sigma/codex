@@ -49,6 +49,11 @@ article > h4 {
   overflow-x: auto;
 }
 
+.code-block .collapsed {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
 pre {
   margin:0;
   padding:15px;

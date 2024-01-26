@@ -1,6 +1,7 @@
 pub mod assets;
 mod document;
 mod error;
+mod json_schema;
 mod project;
 mod template;
 

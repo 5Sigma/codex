@@ -188,9 +188,13 @@ impl Project {
 pub mod tests {
     use super::*;
 
+    pub fn project_fixture() -> Project {
+        Project::load(PathBuf::from("test").join("fixture"), false).unwrap()
+    }
+
     #[test]
     fn project_base_url() {
-        let mut project = Project::load(PathBuf::from("test").join("fixture"), false).unwrap();
+        let mut project = project_fixture();
 
         // Without base url
         let doc = project.get_document_for_url("/elements/root_link").unwrap();
@@ -232,12 +236,12 @@ pub mod tests {
 
     #[test]
     fn project_load_path() {
-        Project::load(PathBuf::from("test").join("fixture"), false).unwrap();
+        project_fixture();
     }
 
     #[test]
     fn component_override() {
-        let project = Project::load(PathBuf::from("test").join("fixture"), false).unwrap();
+        let project = project_fixture();
         let doc = project
             .get_document_for_url("/other/override_component")
             .unwrap();
@@ -246,7 +250,7 @@ pub mod tests {
 
     #[test]
     fn custom_component() {
-        let project = Project::load(PathBuf::from("test").join("fixture"), false).unwrap();
+        let project = project_fixture();
         let doc = project
             .get_document_for_url("/other/custom_component")
             .unwrap();

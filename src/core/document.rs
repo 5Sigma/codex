@@ -10,10 +10,12 @@ use syntect::{
     easy::HighlightLines,
     highlighting::ThemeSet,
     html::{styled_line_to_highlighted_html, IncludeBackground},
-    parsing::SyntaxSet,
+    parsing::{SyntaxReference, SyntaxSet},
 };
 
-use crate::{assets::CodexPath, render_template, Error, Project, Result};
+use crate::{
+    assets::CodexPath, json_schema::parse_schema, render_template, Error, Project, Result,
+};
 
 /// The front matter of a document
 /// This is used to store metadata about a document
@@ -62,33 +64,10 @@ impl std::fmt::Debug for Document {
 
 impl Document {
     fn parse(file_path: &CodexPath) -> Result<Node> {
-        let parser_options = markdown::ParseOptions {
-            constructs: markdown::Constructs {
-                code_indented: false,
-                frontmatter: true,
-                mdx_jsx_flow: true,
-                html_flow: false,
-                html_text: false,
-                mdx_esm: true,
-                mdx_expression_flow: true,
-                mdx_expression_text: true,
-                gfm_task_list_item: true,
-                gfm_strikethrough: true,
-                mdx_jsx_text: true,
-                gfm_table: true,
-                ..Default::default()
-            },
-            mdx_expression_parse: Some(Box::new(parse_expression)),
-            gfm_strikethrough_single_tilde: true,
-            math_text_single_dollar: true,
-            ..markdown::ParseOptions::mdx()
-        };
-
         let content = String::from_utf8(file_path.read()?.to_vec())?;
 
         // Parse the markdown into an AST
-        let ast = markdown::to_mdast(&content, &parser_options)?;
-        Ok(ast)
+        parse_ast(&content)
     }
 
     pub fn load(project: &Project, file_path: CodexPath) -> Result<Self> {
@@ -383,6 +362,51 @@ impl Document {
                     .new_path("_internal/components/csv_table.html");
                 render_template(ctx, &String::from_utf8(cmp_path.read()?.to_vec())?)
             }
+            "JsonSchemaFields" => {
+                let schema_filename = self.file_path.new_path(
+                    data.get("file")
+                        .ok_or_else(|| Error::new("No file specified"))?,
+                );
+                let data = schema_filename.read()?;
+                let fields = parse_schema(&data)?;
+
+                let mut output = String::new();
+                for mut field in fields.into_iter() {
+                    field.children = self.to_html(&parse_ast(&field.children)?);
+                    let cmp_path = self.file_path.new_path("_internal/components/field.html");
+                    output.push_str(&render_template(
+                        field,
+                        &String::from_utf8(cmp_path.read()?.to_vec())?,
+                    )?);
+                }
+
+                Ok(output)
+            }
+            "CodeFile" => {
+                let source_file_path = self.file_path.new_path(
+                    data.get("file")
+                        .ok_or_else(|| Error::new("No file specified"))?,
+                );
+
+                #[derive(Debug, Serialize)]
+                struct CodeFileCtx {
+                    lines: Vec<String>,
+                    collapse: bool,
+                    lang: String,
+                }
+
+                let cmp_path = self.file_path.new_path("_internal/templates/code.html");
+                let lines = highlight_by_extension(
+                    &source_file_path.disk_path(),
+                    &String::from_utf8(source_file_path.read()?.to_vec())?,
+                )?;
+                let ctx = CodeFileCtx {
+                    lines,
+                    collapse: data.get("collapsed").unwrap_or(&"false".to_string()) == "true",
+                    lang: "".to_string(),
+                };
+                render_template(ctx, &String::from_utf8(cmp_path.read()?.to_vec())?)
+            }
             _ => {
                 let cmp_path = self
                     .file_path
@@ -412,6 +436,31 @@ impl Document {
             _ => Ok("".to_string()),
         }
     }
+}
+
+fn parse_ast(content: &str) -> Result<Node> {
+    let parser_options = markdown::ParseOptions {
+        constructs: markdown::Constructs {
+            code_indented: false,
+            frontmatter: true,
+            mdx_jsx_flow: true,
+            html_flow: false,
+            html_text: false,
+            mdx_esm: true,
+            mdx_expression_flow: true,
+            mdx_expression_text: true,
+            gfm_task_list_item: true,
+            gfm_strikethrough: true,
+            mdx_jsx_text: true,
+            gfm_table: true,
+            ..Default::default()
+        },
+        mdx_expression_parse: Some(Box::new(parse_expression)),
+        gfm_strikethrough_single_tilde: true,
+        math_text_single_dollar: true,
+        ..markdown::ParseOptions::mdx()
+    };
+    Ok(markdown::to_mdast(content, &parser_options)?)
 }
 
 pub fn parse_expression(_value: &str, _kind: &MdxExpressionKind) -> MdxSignal {
@@ -560,12 +609,24 @@ impl From<&crate::Folder> for SiteMapFolder {
     }
 }
 
+pub fn highlight_by_extension(path: &std::path::Path, s: &str) -> Result<Vec<String>> {
+    let ss = SyntaxSet::load_defaults_newlines();
+    let syn = ss
+        .find_syntax_for_file(path)?
+        .ok_or_else(|| Error::new("Syntax not found"))?;
+
+    highlight_content(syn, s, &ss)
+}
 pub fn highlight(name: &str, s: &str) -> Result<Vec<String>> {
-    let ts = ThemeSet::load_defaults();
     let ss = SyntaxSet::load_defaults_newlines();
     let syn = ss
         .find_syntax_by_name(name)
         .ok_or_else(|| Error::new("Syntax not found"))?;
+    highlight_content(syn, s, &ss)
+}
+
+pub fn highlight_content(syn: &SyntaxReference, s: &str, ss: &SyntaxSet) -> Result<Vec<String>> {
+    let ts = ThemeSet::load_defaults();
     let theme = ts
         .themes
         .get("Solarized (dark)")
@@ -575,9 +636,23 @@ pub fn highlight(name: &str, s: &str) -> Result<Vec<String>> {
     let res = s
         .lines()
         .map(|s| {
-            let hl = h.highlight_line(s, &ss).unwrap();
+            let hl = h.highlight_line(s, ss).unwrap();
             styled_line_to_highlighted_html(&hl[..], IncludeBackground::No).unwrap()
         })
         .collect::<Vec<_>>();
     Ok(res)
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::tests::project_fixture;
+
+    #[test]
+    pub fn test_csv_table() {
+        let project = project_fixture();
+        let doc = project.get_document_for_url("/other/csv").unwrap();
+
+        let result = "<table class=\"table table-sm table-striped\">\n  <thead>\n    <tr>\n        <th class=\"text-uppercase\">name</th>\n        <th class=\"text-uppercase\">age</th>\n        <th class=\"text-uppercase\">position</th>\n    </tr>\n  </thead>\n  <tr>\n      <td>alice</td>\n      <td>18</td>\n      <td>engineer</td>\n  </tr>\n  <tr>\n      <td>bob</td>\n      <td>19</td>\n      <td>engineer</td>\n  </tr>\n  <tr>\n      <td>charlie</td>\n      <td>20</td>\n      <td>manager</td>\n  </tr>\n</table>\n";
+        assert_eq!(doc.body().unwrap(), result.to_string());
+    }
 }
