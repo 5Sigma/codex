@@ -20,7 +20,7 @@
     </div>
     <span class="fw-bold p-2 text-center position-relative">
       {{#if type_link}}
-      <a class="text-dark stretched-link" href="{{type_link}}">{{type}}</a><i class="ms-2 fal fa-chevron-right"></i>
+      <a class="text-dark stretched-link" href="{{join_url base_url type_link}}">{{type}}</a><i class="ms-2 fal fa-chevron-right"></i>
       {{else}}
         {{type}}
       {{/if}}
