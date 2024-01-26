@@ -55,7 +55,7 @@ impl ServerHandler {
         if let Ok(data) = static_path.read() {
             let _ = request.respond(Response::from_data(data));
         } else {
-            let _ = request.respond(Response::from_string("not found").with_status_code(404));
+            respond404(&self.project, request);
         }
     }
     pub fn handle_file(&self, request: Request) {
@@ -75,24 +75,27 @@ impl ServerHandler {
             });
             let _ = request.respond(response);
         } else {
-            let ctx = core::DataContext {
-                project: self.project.details.clone(),
-                ..Default::default()
-            };
-            let data = core::render_template(ctx, &core::assets::get_str("templates/404.html"))
-                .unwrap_or_default();
-            let _ = request.respond(
-                tiny_http::Response::from_string(data)
-                    .with_header(tiny_http::Header {
-                        field: "Content-Type".parse().unwrap(),
-                        value: "text/html".parse().unwrap(),
-                    })
-                    .with_status_code(404),
-            );
+            respond404(&self.project, request);
         }
     }
 }
 
+pub fn respond404(project: &Project, request: Request) {
+    let ctx = core::DataContext {
+        project: project.details.clone(),
+        ..Default::default()
+    };
+    let data = core::render_template(ctx, &core::assets::get_str("_internal/templates/404.html"))
+        .unwrap_or_default();
+    let _ = request.respond(
+        tiny_http::Response::from_string(data)
+            .with_header(tiny_http::Header {
+                field: "Content-Type".parse().unwrap(),
+                value: "text/html".parse().unwrap(),
+            })
+            .with_status_code(404),
+    );
+}
 fn output_log(url: &str, time: std::time::Duration) {
     let term = console::Term::stdout();
     let dim = console::Style::new().dim();
