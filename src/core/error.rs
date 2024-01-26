@@ -95,3 +95,11 @@ impl From<walkdir::Error> for Error {
         }
     }
 }
+
+impl From<csv::Error> for Error {
+    fn from(value: csv::Error) -> Self {
+        Self {
+            message: value.to_string(),
+        }
+    }
+}

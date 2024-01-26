@@ -1,0 +1,16 @@
+<table class="table table-sm table-striped">
+  <thead>
+    <tr>
+      {{#each headers}}
+        <th class="text-uppercase">{{this}}</th>
+      {{/each}}
+    </tr>
+  </thead>
+  {{#each rows}}
+  <tr>
+    {{#each this}}
+      <td>{{this}}</td>
+    {{/each}}
+  </tr>
+  {{/each}}
+</table>

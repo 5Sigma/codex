@@ -37,17 +37,20 @@ pub fn serve(args: &crate::Args) {
         .for_each(|request| {
             let now = std::time::Instant::now();
             let url = request.url().to_string();
+
+            #[allow(clippy::blocks_in_if_conditions)]
             if url == "/" {
                 let _ = handler.project.write().unwrap().reload();
                 output_log(&url, now.elapsed(), handler.handle_file(request));
-            } else if handler
-                .project
-                .read()
-                .unwrap()
-                .path
-                .from_url(&format!("/static{}", request.url()))
-                .exists()
-            {
+            } else if {
+                handler
+                    .project
+                    .read()
+                    .unwrap()
+                    .path
+                    .from_url(&format!("/static{}", request.url()))
+                    .exists()
+            } {
                 let size = handler.handle_static(request);
                 if args.verbose {
                     output_log(&url, now.elapsed(), size);
