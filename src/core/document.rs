@@ -701,7 +701,32 @@ mod tests {
         let project = project_fixture();
         let doc = project.get_document_for_url("/other/csv").unwrap();
 
-        let result = "<table class=\"table table-sm table-striped\">\n  <thead>\n    <tr>\n        <th class=\"text-uppercase\">name</th>\n        <th class=\"text-uppercase\">age</th>\n        <th class=\"text-uppercase\">position</th>\n    </tr>\n  </thead>\n  <tr>\n      <td>alice</td>\n      <td>18</td>\n      <td>engineer</td>\n  </tr>\n  <tr>\n      <td>bob</td>\n      <td>19</td>\n      <td>engineer</td>\n  </tr>\n  <tr>\n      <td>charlie</td>\n      <td>20</td>\n      <td>manager</td>\n  </tr>\n</table>\n";
-        assert_eq!(doc.body().unwrap(), result.to_string());
+        let result = vec![
+            "<table class=\"table table-sm table-striped\">",
+            "  <thead>",
+            "    <tr>",
+            "        <th class=\"text-uppercase\">name</th>",
+            "        <th class=\"text-uppercase\">age</th>",
+            "        <th class=\"text-uppercase\">position</th>",
+            "    </tr>",
+            "  </thead>",
+            "  <tr>",
+            "      <td>alice</td>",
+            "      <td>18</td>",
+            "      <td>engineer</td>",
+            "  </tr>",
+            "  <tr>",
+            "      <td>bob</td>",
+            "      <td>19</td>",
+            "      <td>engineer</td>",
+            "  </tr>",
+            "  <tr>",
+            "      <td>charlie</td>",
+            "      <td>20</td>",
+            "      <td>manager</td>",
+            "  </tr>",
+            "</table>",
+        ];
+        assert_eq!(doc.body().unwrap().lines().collect::<Vec<_>>(), result);
     }
 }
