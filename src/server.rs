@@ -1,4 +1,4 @@
-use core::Project;
+use core::{Project, Renderer};
 
 use console::style;
 use human_repr::{HumanCount, HumanDuration};
@@ -75,10 +75,21 @@ impl ServerHandler {
             request.url().trim_end_matches('/')
         };
         if let Some(doc) = self.project.get_document_for_url(url) {
-            let page_content = match doc.page_content(&self.project) {
-                Ok(i) => i,
-                Err(e) => format!("<pre>{}</pre>", e),
+            let renderer = core::HtmlRenderer {
+                render_context: core::RenderContext {
+                    base_url: self.project.details.base_url.clone(),
+                    file_path: doc.file_path.clone(),
+                    root_folder: self.project.root_folder.clone(),
+                    root_path: self.project.path.clone(),
+                    front_matter: doc.frontmatter.clone(),
+                    project_details: self.project.details.clone(),
+                },
             };
+            let page_content = renderer.render().unwrap();
+            // let page_content = match doc.page_content(&self.project) {
+            //     Ok(i) => i,
+            //     Err(e) => format!("<pre>{}</pre>", e),
+            // };
             let l = page_content.len();
             let response = Response::from_string(page_content).with_header(tiny_http::Header {
                 field: "Content-Type".parse().unwrap(),

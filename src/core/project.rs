@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{assets::CodexPath, Document, Result};
 
-#[derive(Debug, Deserialize, Serialize, Default)]
+#[derive(Debug, Deserialize, Serialize, Default, Clone)]
 #[serde(default)]
 pub struct FolderDetails {
     pub name: Option<String>,
@@ -15,7 +15,7 @@ pub struct FolderDetails {
 /// A folder in the project.
 /// This is a recursive structure, so it can contain other folders.
 /// It also contains a list of documents.
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Folder {
     pub name: String,
     pub path: CodexPath,
@@ -186,6 +186,8 @@ impl Project {
 #[cfg(test)]
 
 pub mod tests {
+    use crate::{renderer::tests::build_render_context, HtmlRenderer, Renderer};
+
     use super::*;
 
     pub fn project_fixture() -> Project {
@@ -195,15 +197,16 @@ pub mod tests {
     #[test]
     fn project_base_url() {
         let mut project = project_fixture();
-
-        // Without base url
         let doc = project.get_document_for_url("/elements/root_link").unwrap();
+        let render_context = build_render_context("/elements/root_link");
+        let renderer = HtmlRenderer { render_context };
+
         assert_eq!(
             doc.file_path.document_url(),
             "/elements/root_link".to_string()
         );
         assert_eq!(
-            doc.body().unwrap(),
+            renderer.render_body().unwrap(),
             r#"<p><a href="/somewhere/someplace">Test</a></p>"#,
         );
         assert_eq!(project.details.base_url, "/".to_string());
@@ -219,17 +222,16 @@ pub mod tests {
             "/elements/root_link".to_string()
         );
         assert_eq!(
-            doc.body().unwrap(),
+            renderer.render_body().unwrap(),
             r#"<p><a href="/docs/somewhere/someplace">Test</a></p>"#,
         );
         assert_eq!(project.details.base_url, "/docs/".to_string());
 
-        let doc = project
-            .get_document_for_url("/docs/elements/external_link")
-            .unwrap();
+        let render_context = build_render_context("/docs/elements/root_link");
+        let renderer = HtmlRenderer { render_context };
 
         assert_eq!(
-            doc.body().unwrap(),
+            renderer.render().unwrap(),
             r#"<p><a href="https://example.com">Test</a></p>"#,
         );
     }
@@ -241,19 +243,15 @@ pub mod tests {
 
     #[test]
     fn component_override() {
-        let project = project_fixture();
-        let doc = project
-            .get_document_for_url("/other/override_component")
-            .unwrap();
-        assert_eq!(doc.body().unwrap().trim(), "Overridden");
+        let render_context = build_render_context("/other/override_component");
+        let renderer = HtmlRenderer { render_context };
+        assert_eq!(renderer.render().unwrap().trim(), "Overridden");
     }
 
     #[test]
     fn custom_component() {
-        let project = project_fixture();
-        let doc = project
-            .get_document_for_url("/other/custom_component")
-            .unwrap();
-        assert_eq!(doc.body().unwrap().trim(), "hello Alice");
+        let render_context = build_render_context("/other/custom_component");
+        let renderer = HtmlRenderer { render_context };
+        assert_eq!(renderer.render().unwrap().trim(), "hello Alice");
     }
 }

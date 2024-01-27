@@ -2,7 +2,7 @@ mod server;
 
 use anyhow::Result;
 use console::style;
-use core::{assets::EmbeddedAsset, Project};
+use core::{assets::EmbeddedAsset, HtmlRenderer, Project, Renderer};
 use human_repr::{HumanCount, HumanDuration};
 use std::path::PathBuf;
 
@@ -226,7 +226,17 @@ fn build_folder(args: &Args, project: &Project, folder: &core::Folder) -> Result
 }
 
 fn build_document(args: &Args, project: &Project, doc: &core::Document) -> Result<usize> {
-    let content = doc.page_content(project)?;
+    let renderer = HtmlRenderer {
+        render_context: core::RenderContext {
+            base_url: project.details.base_url.clone(),
+            file_path: doc.file_path.clone(),
+            root_folder: project.root_folder.clone(),
+            root_path: project.path.clone(),
+            front_matter: doc.frontmatter.clone(),
+            project_details: project.details.clone(),
+        },
+    };
+    let content = renderer.render()?;
     let file_path = if doc.file_path.is_index() {
         doc.file_path
             .relative_to(
