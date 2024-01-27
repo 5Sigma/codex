@@ -1,15 +1,13 @@
 use core::Project;
-use std::sync::{Arc, RwLock};
 
 use console::style;
 use human_repr::{HumanCount, HumanDuration};
-use rayon::prelude::{IntoParallelIterator, ParallelBridge, ParallelIterator};
 use tiny_http::{Request, Response, Server};
 
 use crate::RootCommands;
 
 struct ServerHandler {
-    project: Arc<RwLock<Project>>,
+    project: Project,
 }
 
 pub fn serve(args: &crate::Args) {
@@ -24,43 +22,35 @@ pub fn serve(args: &crate::Args) {
         style(&server_url).bright().underlined().bold()
     ));
     let server = Server::http(server_url).unwrap();
-    let handler = ServerHandler {
-        project: Arc::new(RwLock::new(
-            Project::load(&args.root_path, true).expect("Failed to load project"),
-        )),
+    let mut handler = ServerHandler {
+        project: Project::load(&args.root_path, true).expect("Failed to load project"),
     };
 
-    server
-        .incoming_requests()
-        .par_bridge()
-        .into_par_iter()
-        .for_each(|request| {
-            let now = std::time::Instant::now();
-            let url = request.url().to_string();
+    server.incoming_requests().for_each(|request| {
+        let now = std::time::Instant::now();
+        let url = request.url().to_string();
 
-            #[allow(clippy::blocks_in_if_conditions)]
-            if url == "/" {
-                let _ = handler.project.write().unwrap().reload();
-                output_log(&url, now.elapsed(), handler.handle_file(request));
-            } else if {
-                handler
-                    .project
-                    .read()
-                    .unwrap()
-                    .path
-                    .from_url(&format!("/static{}", request.url()))
-                    .exists()
-            } {
-                let size = handler.handle_static(request);
-                if args.verbose {
-                    output_log(&url, now.elapsed(), size);
-                }
-            } else {
-                let _ = handler.project.write().unwrap().reload();
-                let size = handler.handle_file(request);
+        #[allow(clippy::blocks_in_if_conditions)]
+        if url == "/" {
+            let _ = handler.project.reload();
+            output_log(&url, now.elapsed(), handler.handle_file(request));
+        } else if {
+            handler
+                .project
+                .path
+                .from_url(&format!("/static{}", request.url()))
+                .exists()
+        } {
+            let size = handler.handle_static(request);
+            if args.verbose {
                 output_log(&url, now.elapsed(), size);
             }
-        });
+        } else {
+            let _ = handler.project.reload();
+            let size = handler.handle_file(request);
+            output_log(&url, now.elapsed(), size);
+        }
+    });
 }
 
 impl ServerHandler {
@@ -68,8 +58,6 @@ impl ServerHandler {
     pub fn handle_static(&self, request: Request) -> usize {
         let static_path = self
             .project
-            .read()
-            .unwrap()
             .path
             .from_url(&format!("/static{}", request.url()));
         if let Ok(data) = static_path.read() {
@@ -77,7 +65,7 @@ impl ServerHandler {
             let _ = request.respond(Response::from_data(data));
             len
         } else {
-            respond404(&self.project.read().unwrap(), request)
+            respond404(&self.project, request)
         }
     }
     pub fn handle_file(&self, request: Request) -> usize {
@@ -86,8 +74,8 @@ impl ServerHandler {
         } else {
             request.url().trim_end_matches('/')
         };
-        if let Some(doc) = self.project.read().unwrap().get_document_for_url(url) {
-            let page_content = match doc.page_content(&self.project.read().unwrap()) {
+        if let Some(doc) = self.project.get_document_for_url(url) {
+            let page_content = match doc.page_content(&self.project) {
                 Ok(i) => i,
                 Err(e) => format!("<pre>{}</pre>", e),
             };
@@ -99,7 +87,7 @@ impl ServerHandler {
             let _ = request.respond(response);
             l
         } else {
-            respond404(&self.project.read().unwrap(), request)
+            respond404(&self.project, request)
         }
     }
 }

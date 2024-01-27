@@ -175,6 +175,16 @@ impl CodexPath {
         format!("/{}", url.trim_start_matches('/'))
     }
 
+    pub fn file_url(&self) -> String {
+        let url = self
+            .relative_path
+            .components()
+            .map(|c| c.as_os_str().to_string_lossy())
+            .collect::<Vec<_>>()
+            .join("/");
+        format!("/{}", url.trim_start_matches('/'))
+    }
+
     pub fn document_url_with_base(&self, base_url: &str) -> String {
         format!(
             "/{}/{}",

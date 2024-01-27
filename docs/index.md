@@ -75,8 +75,10 @@ Currently, it does not.
 
 > Can custom JSX components be used 
 
-Yes additional components can be written using a handlebars syntax for the 
+Yes, additional components can be written using a handlebars syntax for the 
 component template and used in markdown with JSX syntax.
+
+ See [Custom Components](/components/custom-components).
 
 > What kind of documentation is codex suited for.  
 

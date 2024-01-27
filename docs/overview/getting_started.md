@@ -62,7 +62,7 @@ will also setup an _Overview_ group in the navigation. Create a file at:
 
 _project_root_/overview/getting-started.md
 
-This file should have _front matter_ that defines its title, such as:
+This file should have [front matter](/config/frontmatter) that defines its title, such as:
 
 ```Markdown
 ---
@@ -77,5 +77,5 @@ Some content
 # Viewing the project
 
 To view the project run _codex serve_ from the root of the project. This will 
-spawn a web server that will serve the project at http://localhost:8080 
+spawn a web server that will serve the project at **http://localhost:8080**.
 
