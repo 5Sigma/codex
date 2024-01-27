@@ -73,6 +73,7 @@ impl Default for ProjectDetails {
 
 /// The project.
 /// This is the main structure that contains all the information about the project.
+#[derive(Clone, Debug)]
 pub struct Project {
     pub details: ProjectDetails,
     pub root_folder: Folder,
@@ -186,7 +187,7 @@ impl Project {
 #[cfg(test)]
 
 pub mod tests {
-    use crate::{renderer::tests::build_render_context, HtmlRenderer, Renderer};
+    use crate::{renderer::tests::build_render_context, HtmlRenderer, RenderContext, Renderer};
 
     use super::*;
 
@@ -197,7 +198,10 @@ pub mod tests {
     #[test]
     fn project_base_url() {
         let mut project = project_fixture();
-        let doc = project.get_document_for_url("/elements/root_link").unwrap();
+        let doc = project
+            .get_document_for_url("/elements/root_link")
+            .unwrap()
+            .clone();
         let render_context = build_render_context("/elements/root_link");
         let renderer = HtmlRenderer { render_context };
 
@@ -207,13 +211,14 @@ pub mod tests {
         );
         assert_eq!(
             renderer.render_body().unwrap(),
-            r#"<p><a href="/somewhere/someplace">Test</a></p>"#,
+            r#"<p><a href="/somewhere/someplace" alt="">Test</a></p>"#,
         );
         assert_eq!(project.details.base_url, "/".to_string());
 
-        // With base url
+        // With base URL
         project.details.base_url = "/docs/".to_string();
         project.reload().unwrap();
+        let renderer = HtmlRenderer::new(RenderContext::new(&project.clone(), &doc.clone()));
         let doc = project
             .get_document_for_url("/docs/elements/root_link")
             .unwrap();
@@ -223,16 +228,18 @@ pub mod tests {
         );
         assert_eq!(
             renderer.render_body().unwrap(),
-            r#"<p><a href="/docs/somewhere/someplace">Test</a></p>"#,
+            r#"<p><a href="/docs/somewhere/someplace" alt="">Test</a></p>"#,
         );
         assert_eq!(project.details.base_url, "/docs/".to_string());
 
-        let render_context = build_render_context("/docs/elements/root_link");
-        let renderer = HtmlRenderer { render_context };
+        let doc = project
+            .get_document_for_url("/docs/elements/external_link")
+            .unwrap();
+        let renderer = HtmlRenderer::new(RenderContext::new(&project.clone(), &doc.clone()));
 
         assert_eq!(
-            renderer.render().unwrap(),
-            r#"<p><a href="https://example.com">Test</a></p>"#,
+            renderer.render_body().unwrap(),
+            r#"<p><a href="https://example.com" alt="">Test</a></p>"#,
         );
     }
 
@@ -245,13 +252,13 @@ pub mod tests {
     fn component_override() {
         let render_context = build_render_context("/other/override_component");
         let renderer = HtmlRenderer { render_context };
-        assert_eq!(renderer.render().unwrap().trim(), "Overridden");
+        assert_eq!(renderer.render_body().unwrap().trim(), "Overridden");
     }
 
     #[test]
     fn custom_component() {
         let render_context = build_render_context("/other/custom_component");
         let renderer = HtmlRenderer { render_context };
-        assert_eq!(renderer.render().unwrap().trim(), "hello Alice");
+        assert_eq!(renderer.render_body().unwrap().trim(), "hello Alice");
     }
 }

@@ -12,6 +12,9 @@ pub struct HtmlRenderer {
 }
 
 impl HtmlRenderer {
+    pub fn new(render_context: RenderContext) -> Self {
+        Self { render_context }
+    }
     /// Wrap a list of nodes in HTML with the provided start and end fragments
     fn wrap_nodes(&self, start: &str, end: &str, nodes: &[Node]) -> Result<String> {
         Ok(format!("{}{}{}", start, self.render_nodes(nodes)?, end))
@@ -220,8 +223,8 @@ impl Renderer for HtmlRenderer {
     fn render_link(&self, url: &str, title: Option<String>, children: &[Node]) -> Result<String> {
         Ok(format!(
             "<a href=\"{}\" alt=\"{}\">{}</a>",
+            url,
             title.unwrap_or_default(),
-            url.trim_start_matches('/'),
             self.render_nodes(children)?
         ))
     }
@@ -390,7 +393,6 @@ mod tests {
             "      <td>manager</td>",
             "  </tr>",
             "</table>",
-            "",
         ];
         let renderer = super::HtmlRenderer {
             render_context: build_render_context("/other/csv"),

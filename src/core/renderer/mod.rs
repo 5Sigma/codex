@@ -407,7 +407,7 @@ pub mod tests {
 
     pub fn build_render_context(url: &str) -> RenderContext {
         let project = project_fixture();
-        let doc = project.get_document_for_url("/other/csv").unwrap();
+        let doc = project.get_document_for_url(url).unwrap();
 
         super::RenderContext {
             base_url: project.details.base_url.clone(),
