@@ -7,12 +7,12 @@ use serde::Serialize;
 
 use super::{RenderContext, Renderer};
 
-pub struct HtmlRenderer {
-    pub render_context: RenderContext,
+pub struct HtmlRenderer<'a> {
+    pub render_context: RenderContext<'a>,
 }
 
-impl HtmlRenderer {
-    pub fn new(render_context: RenderContext) -> Self {
+impl<'a> HtmlRenderer<'a> {
+    pub fn new(render_context: RenderContext<'a>) -> Self {
         Self { render_context }
     }
     /// Wrap a list of nodes in HTML with the provided start and end fragments
@@ -28,7 +28,7 @@ impl HtmlRenderer {
     ) -> Result<String> {
         match name {
             "CsvTable" => {
-                let csv_file_name = self.render_context.file_path.new_path(
+                let csv_file_name = self.render_context.document.file_path.new_path(
                     attrs
                         .get("file")
                         .ok_or_else(|| Error::new("No file specified"))?,
@@ -64,6 +64,7 @@ impl HtmlRenderer {
 
                 let cmp_path = self
                     .render_context
+                    .document
                     .file_path
                     .new_path("_internal/components/csv_table.html");
                 render_template(ctx, &String::from_utf8(cmp_path.read()?.to_vec())?)
@@ -71,7 +72,7 @@ impl HtmlRenderer {
             "JsonSchemaFields" => self.component_json_schema_fields(attrs),
             "JsonSchemaExample" => self.component_json_schema_example(attrs),
             "CodeFile" => {
-                let source_file_path = self.render_context.file_path.new_path(
+                let source_file_path = self.render_context.document.file_path.new_path(
                     attrs
                         .get("file")
                         .ok_or_else(|| Error::new("No file specified"))?,
@@ -86,6 +87,7 @@ impl HtmlRenderer {
 
                 let cmp_path = self
                     .render_context
+                    .document
                     .file_path
                     .new_path("_internal/templates/code.html");
                 let lines = highlight_by_extension(
@@ -102,6 +104,7 @@ impl HtmlRenderer {
             _ => {
                 let cmp_path = self
                     .render_context
+                    .document
                     .file_path
                     .new_path(format!("_internal/components/{}.html", name.to_lowercase()));
 
@@ -116,7 +119,7 @@ impl HtmlRenderer {
     }
 
     fn component_json_schema_fields(&self, data: HashMap<String, String>) -> Result<String> {
-        let schema_filename = self.render_context.file_path.new_path(
+        let schema_filename = self.render_context.document.file_path.new_path(
             data.get("file")
                 .ok_or_else(|| Error::new("No file specified"))?,
         );
@@ -128,6 +131,7 @@ impl HtmlRenderer {
             field.children = self.render_node(&self.parse_ast(&field.children)?)?;
             let cmp_path = self
                 .render_context
+                .document
                 .file_path
                 .new_path("_internal/components/field.html");
             output.push_str(&render_template(
@@ -140,7 +144,7 @@ impl HtmlRenderer {
     }
 
     fn component_json_schema_example(&self, data: HashMap<String, String>) -> Result<String> {
-        let schema_filename = self.render_context.file_path.new_path(
+        let schema_filename = self.render_context.document.file_path.new_path(
             data.get("file")
                 .ok_or_else(|| Error::new("No file specified"))?,
         );
@@ -156,6 +160,7 @@ impl HtmlRenderer {
 
         let cmp_path = self
             .render_context
+            .document
             .file_path
             .new_path("_internal/templates/code.html");
         let lines = highlight("JSON", &content)?;
@@ -168,7 +173,7 @@ impl HtmlRenderer {
     }
 }
 
-impl Renderer for HtmlRenderer {
+impl Renderer for HtmlRenderer<'_> {
     fn get_context(&self) -> &RenderContext {
         &self.render_context
     }
@@ -249,6 +254,7 @@ impl Renderer for HtmlRenderer {
         };
         let template = self
             .render_context
+            .document
             .file_path
             .new_path("_internal/templates/code.html");
         let data = super::CodeContext {
@@ -364,7 +370,7 @@ fn highlight_content(
 
 #[cfg(test)]
 mod tests {
-    use crate::{renderer::tests::build_render_context, Renderer};
+    use crate::{project::tests::project_fixture, RenderContext, Renderer};
 
     #[test]
     pub fn test_csv_table() {
@@ -394,8 +400,10 @@ mod tests {
             "  </tr>",
             "</table>",
         ];
+        let project = project_fixture();
+        let doc = project.get_document_for_url("/other/csv").unwrap();
         let renderer = super::HtmlRenderer {
-            render_context: build_render_context("/other/csv"),
+            render_context: RenderContext::new(&project, doc),
         };
         assert_eq!(
             renderer.render_body().unwrap().lines().collect::<Vec<_>>(),

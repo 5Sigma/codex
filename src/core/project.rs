@@ -187,7 +187,7 @@ impl Project {
 #[cfg(test)]
 
 pub mod tests {
-    use crate::{renderer::tests::build_render_context, HtmlRenderer, RenderContext, Renderer};
+    use crate::{HtmlRenderer, RenderContext, Renderer};
 
     use super::*;
 
@@ -202,7 +202,7 @@ pub mod tests {
             .get_document_for_url("/elements/root_link")
             .unwrap()
             .clone();
-        let render_context = build_render_context("/elements/root_link");
+        let render_context = RenderContext::new(&project, &doc);
         let renderer = HtmlRenderer { render_context };
 
         assert_eq!(
@@ -218,7 +218,7 @@ pub mod tests {
         // With base URL
         project.details.base_url = "/docs/".to_string();
         project.reload().unwrap();
-        let renderer = HtmlRenderer::new(RenderContext::new(&project.clone(), &doc.clone()));
+        let renderer = HtmlRenderer::new(RenderContext::new(&project, &doc));
         let doc = project
             .get_document_for_url("/docs/elements/root_link")
             .unwrap();
@@ -235,7 +235,7 @@ pub mod tests {
         let doc = project
             .get_document_for_url("/docs/elements/external_link")
             .unwrap();
-        let renderer = HtmlRenderer::new(RenderContext::new(&project.clone(), &doc.clone()));
+        let renderer = HtmlRenderer::new(RenderContext::new(&project, doc));
 
         assert_eq!(
             renderer.render_body().unwrap(),
@@ -250,15 +250,26 @@ pub mod tests {
 
     #[test]
     fn component_override() {
-        let render_context = build_render_context("/other/override_component");
+        let project = project_fixture();
+        let doc = project
+            .get_document_for_url("/other/override_component")
+            .unwrap()
+            .clone();
+        let render_context = RenderContext::new(&project, &doc);
         let renderer = HtmlRenderer { render_context };
         assert_eq!(renderer.render_body().unwrap().trim(), "Overridden");
     }
 
     #[test]
     fn custom_component() {
-        let render_context = build_render_context("/other/custom_component");
+        let project = project_fixture();
+        let doc = project
+            .get_document_for_url("/other/custom_component")
+            .unwrap()
+            .clone();
+        let render_context = RenderContext::new(&project, &doc);
         let renderer = HtmlRenderer { render_context };
+
         assert_eq!(renderer.render_body().unwrap().trim(), "hello Alice");
     }
 }

@@ -2,32 +2,19 @@
 mod html;
 pub use html::HtmlRenderer;
 
-use crate::{
-    assets::CodexPath, error::Result, Document, Folder, FrontMatter, Project, ProjectDetails,
-};
+use crate::{assets::CodexPath, error::Result, Document, FrontMatter, Project};
 use markdown::mdast::{AttributeContent, AttributeValue, MdxJsxAttribute, Node};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-pub struct RenderContext {
-    pub base_url: String,
-    pub file_path: CodexPath,
-    pub root_folder: Folder,
-    pub root_path: CodexPath,
-    pub front_matter: crate::FrontMatter,
-    pub project_details: ProjectDetails,
+pub struct RenderContext<'a> {
+    pub project: &'a Project,
+    pub document: &'a Document,
 }
 
-impl RenderContext {
-    pub fn new(project: &Project, doc: &Document) -> Self {
-        Self {
-            base_url: project.details.base_url.clone(),
-            file_path: doc.file_path.clone(),
-            root_folder: project.root_folder.clone(),
-            root_path: project.path.clone(),
-            front_matter: doc.frontmatter.clone(),
-            project_details: project.details.clone(),
-        }
+impl<'a> RenderContext<'a> {
+    pub fn new(project: &'a Project, document: &'a Document) -> Self {
+        Self { project, document }
     }
 }
 
@@ -94,29 +81,29 @@ pub struct CodeContext {
 pub trait Renderer {
     fn get_context(&self) -> &RenderContext;
     fn render_body(&self) -> Result<String> {
-        let ast = self.parse(&self.get_context().file_path)?;
+        let ast = self.parse(&self.get_context().document.file_path)?;
         let body = self.render_node(&ast)?;
         Ok(body)
     }
 
     fn render(&self) -> Result<String> {
         let ctx = self.get_context();
-        let sitemap = (&ctx.root_folder).into();
+        let sitemap = (&ctx.project.root_folder).into();
 
         let mut data = DataContext {
             body: self.render_body()?,
-            document: ctx.front_matter.clone(),
+            document: ctx.document.frontmatter.clone(),
             sitemap,
-            project: ctx.project_details.clone(),
+            project: ctx.project.details.clone(),
             toc: self
-                .parse(&ctx.file_path)?
+                .parse(&ctx.document.file_path)?
                 .children()
                 .map(|v| self.toc(v))
                 .unwrap_or_default(),
             modified: self.last_modified().ok(),
         };
 
-        if let Some(ref schema_file) = ctx.front_matter.json_schema {
+        if let Some(ref schema_file) = ctx.document.frontmatter.json_schema {
             data.body.push_str("<h4 class=\"mt-4\">Fields</h4>");
             data.body.push_str(&self.render_jsx_element(
                 "JsonSchemaFields",
@@ -134,7 +121,8 @@ pub trait Renderer {
         crate::render_template(
             data,
             &String::from_utf8(
-                ctx.root_path
+                ctx.project
+                    .path
                     .new_path("_internal/templates/article.html")
                     .read()?
                     .to_vec(),
@@ -278,7 +266,7 @@ pub trait Renderer {
                 let url = if link.url.starts_with('/') {
                     format!(
                         "{}{}",
-                        ctx.base_url,
+                        ctx.project.details.base_url,
                         link.url.clone().trim_start_matches('/'),
                     )
                 } else {
@@ -373,7 +361,8 @@ pub trait Renderer {
     }
 
     fn last_modified(&self) -> Result<String> {
-        let file_time = std::fs::metadata(self.get_context().file_path.disk_path())?.modified()?;
+        let file_time =
+            std::fs::metadata(self.get_context().document.file_path.disk_path())?.modified()?;
         let dt: chrono::DateTime<chrono::Local> = chrono::DateTime::from(file_time);
         Ok(dt.to_utc().format("%Y-%m-%dT%H:%M:%S%z").to_string())
     }
@@ -402,20 +391,4 @@ fn parse_expression(_value: &str, _kind: &markdown::MdxExpressionKind) -> markdo
 }
 
 #[cfg(test)]
-pub mod tests {
-    use crate::{project::tests::project_fixture, RenderContext};
-
-    pub fn build_render_context(url: &str) -> RenderContext {
-        let project = project_fixture();
-        let doc = project.get_document_for_url(url).unwrap();
-
-        super::RenderContext {
-            base_url: project.details.base_url.clone(),
-            file_path: doc.file_path.clone(),
-            root_folder: project.root_folder.clone(),
-            root_path: project.path.clone(),
-            front_matter: doc.frontmatter.clone(),
-            project_details: project.details.clone(),
-        }
-    }
-}
+pub mod tests {}

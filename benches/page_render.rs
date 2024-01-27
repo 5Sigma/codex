@@ -9,12 +9,8 @@ fn criterion_benchmark(c: &mut Criterion) {
 
     let renderer = core::HtmlRenderer {
         render_context: core::RenderContext {
-            base_url: project.details.base_url.clone(),
-            file_path: doc.file_path.clone(),
-            root_folder: project.root_folder.clone(),
-            root_path: project.path.clone(),
-            front_matter: doc.frontmatter.clone(),
-            project_details: project.details.clone(),
+            project: &project,
+            document: doc,
         },
     };
 

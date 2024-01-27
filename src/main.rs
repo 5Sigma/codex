@@ -228,12 +228,8 @@ fn build_folder(args: &Args, project: &Project, folder: &core::Folder) -> Result
 fn build_document(args: &Args, project: &Project, doc: &core::Document) -> Result<usize> {
     let renderer = HtmlRenderer {
         render_context: core::RenderContext {
-            base_url: project.details.base_url.clone(),
-            file_path: doc.file_path.clone(),
-            root_folder: project.root_folder.clone(),
-            root_path: project.path.clone(),
-            front_matter: doc.frontmatter.clone(),
-            project_details: project.details.clone(),
+            project,
+            document: doc,
         },
     };
     let content = renderer.render()?;

@@ -77,12 +77,8 @@ impl ServerHandler {
         if let Some(doc) = self.project.get_document_for_url(url) {
             let renderer = core::HtmlRenderer {
                 render_context: core::RenderContext {
-                    base_url: self.project.details.base_url.clone(),
-                    file_path: doc.file_path.clone(),
-                    root_folder: self.project.root_folder.clone(),
-                    root_path: self.project.path.clone(),
-                    front_matter: doc.frontmatter.clone(),
-                    project_details: self.project.details.clone(),
+                    project: &self.project,
+                    document: doc,
                 },
             };
             let page_content = renderer.render().unwrap();
