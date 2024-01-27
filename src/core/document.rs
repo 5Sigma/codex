@@ -14,7 +14,9 @@ use syntect::{
 };
 
 use crate::{
-    assets::CodexPath, json_schema::parse_schema, render_template, Error, Project, Result,
+    assets::CodexPath,
+    json_schema::{build_example, parse_schema},
+    render_template, Error, Project, Result,
 };
 
 /// The front matter of a document
@@ -35,6 +37,9 @@ pub struct FrontMatter {
     menu_position: i32,
     /// Whether or not the document should be excluded from the site map
     menu_exclude: bool,
+    /// A path to a JSON schema file that will be used to generate the
+    /// document.
+    json_schema: Option<String>,
 }
 
 /// A document or page in the project
@@ -124,7 +129,8 @@ impl Document {
             toc: self.toc.clone(),
             modified: self.last_modified().ok(),
         };
-        render_template(
+        let mut output = String::new();
+        output.push_str(&render_template(
             data,
             &String::from_utf8(
                 project
@@ -133,7 +139,8 @@ impl Document {
                     .read()?
                     .to_vec(),
             )?,
-        )
+        )?);
+        Ok(output)
     }
 
     /// Convert a single node to HTML
@@ -381,6 +388,30 @@ impl Document {
                 }
 
                 Ok(output)
+            }
+            "JsonSchemaExample" => {
+                let schema_filename = self.file_path.new_path(
+                    data.get("file")
+                        .ok_or_else(|| Error::new("No file specified"))?,
+                );
+                let schema_str = schema_filename.read()?;
+                let content = build_example(&schema_str)?;
+
+                #[derive(Debug, Serialize)]
+                struct CodeFileCtx {
+                    lines: Vec<String>,
+                    collapse: bool,
+                    lang: String,
+                }
+
+                let cmp_path = self.file_path.new_path("_internal/templates/code.html");
+                let lines = highlight("JSON", &content)?;
+                let ctx = CodeFileCtx {
+                    lines,
+                    collapse: data.get("collapsed").unwrap_or(&"false".to_string()) == "true",
+                    lang: "".to_string(),
+                };
+                render_template(ctx, &String::from_utf8(cmp_path.read()?.to_vec())?)
             }
             "CodeFile" => {
                 let source_file_path = self.file_path.new_path(

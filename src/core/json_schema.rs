@@ -94,7 +94,7 @@ fn parse_property(
         deprecated: false,
     };
 
-    if schema.format.is_empty() {
+    if !schema.format.is_empty() {
         root_field
             .children
             .push_str(format!("\n\n---\n**Format:** {}\n", schema.format).as_str());
@@ -133,9 +133,123 @@ fn parse_type(schema: &JsonSchema) -> String {
     }
 }
 
-#[test]
-pub fn test_basic_conversion() {
-    let json_schema_str = r#"
+pub(crate) fn build_example(schema_str: &[u8]) -> Result<String> {
+    let schema: JsonSchema = serde_json::from_slice(schema_str)?;
+    let res = build_example_node(&schema);
+    Ok(serde_json::to_string_pretty(&res)?)
+}
+
+pub fn build_example_node(schema: &JsonSchema) -> serde_json::Value {
+    match schema.data_type {
+        SchemaType::Object => {
+            let mut map = serde_json::Map::new();
+            for (name, property) in schema.properties.iter() {
+                map.insert(name.clone(), build_example_node(property));
+            }
+
+            serde_json::Value::Object(map)
+        }
+        SchemaType::Array => {
+            if let Some(items) = &schema.items {
+                serde_json::Value::Array(vec![build_example_node(items)])
+            } else {
+                serde_json::Value::Array(vec![])
+            }
+        }
+        SchemaType::String { .. } => serde_json::Value::String("Value".to_string()),
+        SchemaType::Number { .. } => serde_json::Value::Number(42.into()),
+        SchemaType::Integer { .. } => serde_json::Value::Number(42.into()),
+        SchemaType::Boolean { .. } => serde_json::Value::Bool(false),
+        SchemaType::Null { .. } => serde_json::Value::Null,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::json_schema::{convert_schema_to_fields, JsonSchema};
+
+    use super::build_example;
+
+    #[test]
+    fn test_build_example() {
+        let json_schema_str = r#"
+    {
+        "type": "object",
+        "properties": {
+            "subOne": {
+                "type": "object",
+                "properties": {
+                    "subTwo": {
+                        "type": "object",
+                        "properties": {
+                            "subThree": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }"#;
+        let ex = build_example(json_schema_str.as_bytes()).unwrap();
+        let res =
+            "{\n  \"subOne\": {\n    \"subTwo\": {\n      \"subThree\": \"Value\"\n    }\n  }\n}";
+        assert_eq!(ex, res);
+    }
+
+    #[test]
+    fn test_deeply_nested() {
+        let json_schema_str = r#"
+    {
+        "type": "object",
+        "properties": {
+            "subOne": {
+                "type": "object",
+                "properties": {
+                    "subTwo": {
+                        "type": "object",
+                        "properties": {
+                            "subThree": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }"#;
+        let json_schema: JsonSchema = serde_json::from_str(json_schema_str).unwrap();
+        let fields = convert_schema_to_fields("", &json_schema);
+        dbg!(&fields);
+        assert!(fields.iter().any(|f| f.name == "subOne.subTwo.subThree"));
+    }
+
+    #[test]
+    fn test_format() {
+        let json_schema_str = r#"
+    {
+        "type": "object",
+        "properties": {
+            "formatted": {
+                "type": "string",
+                "format": "date"
+            },
+            "notformatted": {
+                "type": "string"
+            }
+        }
+    }"#;
+
+        let json_schema: JsonSchema = serde_json::from_str(json_schema_str).unwrap();
+        let fields = convert_schema_to_fields("", &json_schema);
+        dbg!(&fields);
+        assert!(fields.first().unwrap().children.contains("Format"));
+        assert!(!fields.last().unwrap().children.contains("Format"));
+    }
+
+    #[test]
+    fn test_basic_conversion() {
+        let json_schema_str = r#"
         {
           "$id": "https://example.com/health-record.schema.json",
           "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -178,38 +292,39 @@ pub fn test_basic_conversion() {
           }
         }"#;
 
-    let json_schema: JsonSchema = serde_json::from_str(json_schema_str).unwrap();
-    let fields = convert_schema_to_fields("", &json_schema);
-    dbg!(&fields);
-    assert_eq!(fields.len(), 7);
-    assert_eq!(
-        fields
-            .iter()
-            .find(|f| f.name == "allergies")
-            .unwrap()
-            .data_type,
-        "Array(String)"
-    );
-    assert!(
-        fields
-            .iter()
-            .find(|f| f.name == "patientName")
-            .unwrap()
-            .required,
-    );
-    assert!(
-        !fields
-            .iter()
-            .find(|f| f.name == "allergies")
-            .unwrap()
-            .required,
-    );
-    assert_eq!(
-        fields
-            .iter()
-            .find(|f| f.name == "patientName")
-            .unwrap()
-            .data_type,
-        "String"
-    );
+        let json_schema: JsonSchema = serde_json::from_str(json_schema_str).unwrap();
+        let fields = convert_schema_to_fields("", &json_schema);
+        dbg!(&fields);
+        assert_eq!(fields.len(), 7);
+        assert_eq!(
+            fields
+                .iter()
+                .find(|f| f.name == "allergies")
+                .unwrap()
+                .data_type,
+            "Array(String)"
+        );
+        assert!(
+            fields
+                .iter()
+                .find(|f| f.name == "patientName")
+                .unwrap()
+                .required,
+        );
+        assert!(
+            !fields
+                .iter()
+                .find(|f| f.name == "allergies")
+                .unwrap()
+                .required,
+        );
+        assert_eq!(
+            fields
+                .iter()
+                .find(|f| f.name == "patientName")
+                .unwrap()
+                .data_type,
+            "String"
+        );
+    }
 }

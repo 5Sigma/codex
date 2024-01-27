@@ -1,6 +1,4 @@
 {
-  "$id": "https://example.com/health-record.schema.json",
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "description": "Schema for representing a health record",
   "type": "object",
   "required": ["patientName", "dateOfBirth", "bloodType"],
