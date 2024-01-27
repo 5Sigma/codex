@@ -31,7 +31,6 @@ pub struct FrontMatter {
 pub struct Document {
     pub file_path: CodexPath,
     pub frontmatter: FrontMatter,
-    pub base_url: String,
     pub url: String,
 }
 
@@ -40,7 +39,6 @@ impl std::fmt::Debug for Document {
         f.debug_struct("Document")
             .field("file_path", &self.file_path)
             .field("frontmatter", &self.frontmatter)
-            .field("base_url", &self.base_url)
             .finish()
     }
 }
@@ -68,7 +66,6 @@ impl Document {
         Ok(Document {
             frontmatter,
             url: file_path.document_url(),
-            base_url: project.details.base_url.clone(),
             file_path,
         })
     }

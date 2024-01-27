@@ -175,8 +175,7 @@ impl Project {
                     .push(self.scan_folder(&root_path.new_path(path.to_path_buf()))?);
             } else if path.extension().and_then(|s| s.to_str()) == Some("md") {
                 let file_path = root_path.new_path(&path);
-                let mut document = Document::load(self, file_path)?;
-                document.base_url = self.details.base_url.clone();
+                let document = Document::load(self, file_path)?;
                 folder.documents.push(document);
             }
         }
