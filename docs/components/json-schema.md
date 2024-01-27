@@ -21,22 +21,22 @@ This component supports a subset of the _jsonschema_ properties:
 
 ## Contents of medical.json
 
-<CodeFile file="components/medical.json"/>
+<CodeFile file="cookbook/medical.json"/>
 
 ## Component usage
 
 ```HTML
-<JsonSchemaFields file="components/medical.json"/>
+<JsonSchemaFields file="cookbook/medical.json"/>
 ```
 
-<JsonSchemaFields file="components/medical.json"/>
+<JsonSchemaFields file="cookbook/medical.json"/>
 
 # Generating an example
 
 An example block can also be generated automatically from a schema file.
 
 ```HTML
-<JsonSchemaExample file="components/medical.json"/>
+<JsonSchemaExample file="cookbook/medical.json"/>
 ```
 
-<JsonSchemaExample file="components/medical.json"/>
+<JsonSchemaExample file="cookbook/medical.json"/>

@@ -1,5 +1,5 @@
 ---
-title: Alert Panel
+title: Alerts
 subtitle: Component
 ---
 

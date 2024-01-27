@@ -17,7 +17,6 @@ dependencies = [
  "markdown",
  "nanoid",
  "pathdiff",
- "rayon",
  "relative-path",
  "rust-embed",
  "serde",

@@ -48,13 +48,13 @@
         </div>
       </div>
     <div class="container-lg">
-      <div class="row gx-5">
-        <div class="col-lg-auto col-md-3 bg-light border-end pe-4 ps-4 full-height">
+      <div class="row gx-5 flex-nowrap">
+        <div class="col-lg-3 col-md-3 bg-light border-start border-end pe-4 ps-4 full-height">
           <div class="sticky-top" id="menu">
             <div class="pb-3">
               {{#each sitemap.pages}}
                 {{#if this.frontmatter.title}}
-                <a class="text-nowrap pe-3 fs-6 fw-light text-capitalie d-block link-underline-opacity-0 link-dark link-underline-opacity-75-hover" 
+                <a class="text-truncate pe-3 fs-6 fw-light text-capitalie d-block link-underline-opacity-0 link-dark link-underline-opacity-75-hover" 
                    href="{{join_url ../project.base_url this.url}}">{{this.frontmatter.title}}</a>
                 {{/if}}
               {{/each}}
@@ -63,14 +63,14 @@
               <div class="pb-3">
                 <div class="text-capitalize fw-bold fs-7">{{this.name}}</div>
                 {{#each this.pages}}
-                  <a class="text-nowrap pe-3 fs-6 fw-light text-capitalie d-block link-underline-opacity-0 link-dark link-underline-opacity-75-hover" 
+                  <a class="text-truncate pe-3 fs-6 fw-light text-capitalie d-block link-underline-opacity-0 link-dark link-underline-opacity-75-hover" 
                      href="{{join_url ../../project.base_url this.url}}">{{this.frontmatter.title}}</a>
                 {{/each}}
               </div>
             {{/each}}
           </div>
         </div>
-        <div class="col-md-9 col-lg-7">
+        <div class="col-md-9 col-lg-6">
             <header class="pt-4 pb-4 mb-4">
               <div class="subheader">{{document.subtitle}}</div>
               {{document.title}}

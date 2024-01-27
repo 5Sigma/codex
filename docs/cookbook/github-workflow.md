@@ -1,5 +1,5 @@
 ---
-title: Github Pages
+title: Github pages
 subtitle: Pipeline Deployment
 ---
 

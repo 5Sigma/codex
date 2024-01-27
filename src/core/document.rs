@@ -121,7 +121,7 @@ impl Document {
     /// Get the HTML content of the page
     pub fn page_content(&self, project: &crate::Project) -> Result<String> {
         let sitemap = (&project.root_folder).into();
-        let data = DataContext {
+        let mut data = DataContext {
             body: self.body()?,
             document: self.frontmatter.clone(),
             sitemap,
@@ -129,8 +129,23 @@ impl Document {
             toc: self.toc.clone(),
             modified: self.last_modified().ok(),
         };
-        let mut output = String::new();
-        output.push_str(&render_template(
+
+        if let Some(ref schema_file) = self.frontmatter.json_schema {
+            data.body.push_str("<h4 class=\"mt-4\">Fields</h4>");
+            data.body
+                .push_str(&self.component_json_schema_fields(HashMap::from([(
+                    "file".to_string(),
+                    schema_file.to_string(),
+                )]))?);
+            data.body.push_str("<h4 class=\"mt-4\">Example</h4>");
+            data.body
+                .push_str(&self.component_json_schema_example(HashMap::from([(
+                    "file".to_string(),
+                    schema_file.to_string(),
+                )]))?);
+        }
+
+        render_template(
             data,
             &String::from_utf8(
                 project
@@ -139,8 +154,7 @@ impl Document {
                     .read()?
                     .to_vec(),
             )?,
-        )?);
-        Ok(output)
+        )
     }
 
     /// Convert a single node to HTML
@@ -369,50 +383,8 @@ impl Document {
                     .new_path("_internal/components/csv_table.html");
                 render_template(ctx, &String::from_utf8(cmp_path.read()?.to_vec())?)
             }
-            "JsonSchemaFields" => {
-                let schema_filename = self.file_path.new_path(
-                    data.get("file")
-                        .ok_or_else(|| Error::new("No file specified"))?,
-                );
-                let data = schema_filename.read()?;
-                let fields = parse_schema(&data)?;
-
-                let mut output = String::new();
-                for mut field in fields.into_iter() {
-                    field.children = self.to_html(&parse_ast(&field.children)?);
-                    let cmp_path = self.file_path.new_path("_internal/components/field.html");
-                    output.push_str(&render_template(
-                        field,
-                        &String::from_utf8(cmp_path.read()?.to_vec())?,
-                    )?);
-                }
-
-                Ok(output)
-            }
-            "JsonSchemaExample" => {
-                let schema_filename = self.file_path.new_path(
-                    data.get("file")
-                        .ok_or_else(|| Error::new("No file specified"))?,
-                );
-                let schema_str = schema_filename.read()?;
-                let content = build_example(&schema_str)?;
-
-                #[derive(Debug, Serialize)]
-                struct CodeFileCtx {
-                    lines: Vec<String>,
-                    collapse: bool,
-                    lang: String,
-                }
-
-                let cmp_path = self.file_path.new_path("_internal/templates/code.html");
-                let lines = highlight("JSON", &content)?;
-                let ctx = CodeFileCtx {
-                    lines,
-                    collapse: data.get("collapsed").unwrap_or(&"false".to_string()) == "true",
-                    lang: "".to_string(),
-                };
-                render_template(ctx, &String::from_utf8(cmp_path.read()?.to_vec())?)
-            }
+            "JsonSchemaFields" => self.component_json_schema_fields(data),
+            "JsonSchemaExample" => self.component_json_schema_example(data),
             "CodeFile" => {
                 let source_file_path = self.file_path.new_path(
                     data.get("file")
@@ -466,6 +438,52 @@ impl Document {
             }
             _ => Ok("".to_string()),
         }
+    }
+
+    fn component_json_schema_example(&self, data: HashMap<String, String>) -> Result<String> {
+        let schema_filename = self.file_path.new_path(
+            data.get("file")
+                .ok_or_else(|| Error::new("No file specified"))?,
+        );
+        let schema_str = schema_filename.read()?;
+        let content = build_example(&schema_str)?;
+
+        #[derive(Debug, Serialize)]
+        struct CodeFileCtx {
+            lines: Vec<String>,
+            collapse: bool,
+            lang: String,
+        }
+
+        let cmp_path = self.file_path.new_path("_internal/templates/code.html");
+        let lines = highlight("JSON", &content)?;
+        let ctx = CodeFileCtx {
+            lines,
+            collapse: data.get("collapsed").unwrap_or(&"false".to_string()) == "true",
+            lang: "".to_string(),
+        };
+        render_template(ctx, &String::from_utf8(cmp_path.read()?.to_vec())?)
+    }
+
+    fn component_json_schema_fields(&self, data: HashMap<String, String>) -> Result<String> {
+        let schema_filename = self.file_path.new_path(
+            data.get("file")
+                .ok_or_else(|| Error::new("No file specified"))?,
+        );
+        let data = schema_filename.read()?;
+        let fields = parse_schema(&data)?;
+
+        let mut output = String::new();
+        for mut field in fields.into_iter() {
+            field.children = self.to_html(&parse_ast(&field.children)?);
+            let cmp_path = self.file_path.new_path("_internal/components/field.html");
+            output.push_str(&render_template(
+                field,
+                &String::from_utf8(cmp_path.read()?.to_vec())?,
+            )?);
+        }
+
+        Ok(output)
     }
 }
 

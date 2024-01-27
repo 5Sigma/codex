@@ -45,3 +45,10 @@ positions) will be sorted alphabetically.
 <Field name="menu_exclude" type="bool" default="false">
 If true the page will not be displayed in the navigation menu.
 </Field>
+<Field name="json_schema" type="String" default="false">
+Specify a JSON Schema file to automatically generate field definitions 
+and object example based on the details in the schema file. 
+
+ See [JSON Schema components](/components/json-schema).
+
+</Field>

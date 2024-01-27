@@ -4,11 +4,6 @@ body {
   font-size: 15px;
 }
 
-.container-lg {
-  margin-left: 0!important;
-  margin-right: 0!important;
-}
-
 .full-height {
   min-height: 100vh;
 }
