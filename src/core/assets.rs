@@ -44,7 +44,7 @@ pub fn static_files(project: &Project) -> Result<Vec<CodexPath>> {
 
 #[derive(Debug, Eq, PartialEq, Clone, Serialize)]
 pub struct CodexPath {
-    project_root: PathBuf,
+    pub(crate) project_root: PathBuf,
     relative_path: PathBuf,
 }
 

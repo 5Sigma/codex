@@ -18,7 +18,11 @@ Codex provides binaries for the following platforms:
 On Linux Codex can be installed via a installation shell script
 
 ```
-curl --proto '=https' --tlsv1.2 -LsSf https://github.com/5Sigma/codex/releases/latest/download/Codex-installer.sh | sh
+curl --proto \
+'=https' \
+--tlsv1.2 \
+-LsSf https://github.com/5Sigma/codex/releases/latest/download/Codex-installer.sh \
+| sh
 ```
 
 

@@ -57,6 +57,7 @@ pub struct ProjectDetails {
     pub repo_url: Option<String>,
     pub project_page: Option<String>,
     pub base_url: String,
+    pub author: Option<String>,
 }
 
 impl Default for ProjectDetails {
@@ -67,6 +68,7 @@ impl Default for ProjectDetails {
             repo_url: None,
             project_page: None,
             base_url: "/".to_string(),
+            author: None,
         }
     }
 }
@@ -116,13 +118,13 @@ impl Project {
         let proj_path = CodexPath::for_project(path.clone());
         project.path = proj_path.clone();
         project.root_folder.path = project.path.clone();
-        project.root_folder = project.scan_folder(&proj_path)?;
+        project.root_folder = scan_folder(&proj_path)?;
         Ok(project)
     }
 
     pub fn reload(&mut self) -> Result<()> {
         let path = self.path.clone();
-        self.root_folder = self.scan_folder(&path)?;
+        self.root_folder = scan_folder(&path)?;
         Ok(())
     }
 
@@ -145,42 +147,48 @@ impl Project {
             .iter_all_documents()
             .find(|d| d.file_path.document_url() == url)
     }
+}
 
-    pub fn scan_folder(&mut self, root_path: &CodexPath) -> Result<Folder> {
-        let folder_name = root_path.basename().unwrap_or("Unnamed".to_string());
-        let mut folder = Folder::new(folder_name, root_path.clone());
-        folder.details = std::fs::File::open(root_path.disk_path().join("group.yml"))
-            .ok()
-            .and_then(|f| serde_yaml::from_reader(f).ok())
-            .unwrap_or_default();
-        for entry in root_path.disk_path().read_dir()? {
-            let entry = entry?;
-            let path = entry.path();
-            if path.file_name().and_then(|s| s.to_str()) == Some("static") {
-                continue;
-            }
-            if path.file_name().and_then(|s| s.to_str()) == Some("_internal") {
-                continue;
-            }
-            if path.file_name().and_then(|s| s.to_str()) == Some("dist") {
-                continue;
-            }
-            if path.file_name().and_then(|s| s.to_str()) == Some(".git") {
-                continue;
-            }
-
-            if path.is_dir() {
-                folder
-                    .folders
-                    .push(self.scan_folder(&root_path.new_path(path.to_path_buf()))?);
-            } else if path.extension().and_then(|s| s.to_str()) == Some("md") {
-                let file_path = root_path.new_path(&path);
-                let document = Document::load(self, file_path)?;
-                folder.documents.push(document);
-            }
+pub fn scan_folder(root_path: &CodexPath) -> Result<Folder> {
+    let folder_name = root_path.basename().unwrap_or("Unnamed".to_string());
+    let mut folder = Folder::new(folder_name, root_path.clone());
+    folder.details = std::fs::File::open(root_path.disk_path().join("group.yml"))
+        .ok()
+        .and_then(|f| serde_yaml::from_reader(f).ok())
+        .unwrap_or_default();
+    for entry in root_path.disk_path().read_dir()? {
+        let entry = entry?;
+        let path = entry.path();
+        if path.file_name().and_then(|s| s.to_str()) == Some("static") {
+            continue;
         }
-        Ok(folder)
+        if path.file_name().and_then(|s| s.to_str()) == Some("_internal") {
+            continue;
+        }
+        if path.file_name().and_then(|s| s.to_str()) == Some("dist") {
+            continue;
+        }
+        if path.file_name().and_then(|s| s.to_str()) == Some(".git") {
+            continue;
+        }
+
+        if path.is_dir() {
+            folder
+                .folders
+                .push(scan_folder(&root_path.new_path(path.to_path_buf()))?);
+        } else if path.extension().and_then(|s| s.to_str()) == Some("md") {
+            let file_path = root_path.new_path(&path);
+            let document = Document::load(file_path)?;
+            folder.documents.push(document);
+        }
     }
+    folder
+        .folders
+        .sort_by_key(|f| (f.details.menu_position, f.name.clone()));
+    folder
+        .documents
+        .sort_by_key(|d| (d.frontmatter.menu_position, d.frontmatter.title.clone()));
+    Ok(folder)
 }
 
 #[cfg(test)]

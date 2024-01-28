@@ -126,3 +126,7 @@ ul li {
   margin-left: 20px;
 }
 
+
+table thead td {
+  font-weight: bold;
+}

@@ -1,6 +1,7 @@
 ---
 title: Code Highlights
 menu_exclude: true
+pdf_exclude: true
 ---
 
 # Supported Lanugages

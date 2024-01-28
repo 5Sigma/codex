@@ -2,9 +2,9 @@ mod server;
 
 use anyhow::Result;
 use console::style;
-use core::{assets::EmbeddedAsset, HtmlRenderer, Project, Renderer};
+use core::{assets::EmbeddedAsset, HtmlRenderer, LatexRenderer, Project, Renderer};
 use human_repr::{HumanCount, HumanDuration};
-use std::path::PathBuf;
+use std::{io::Write, path::PathBuf};
 
 use clap::{
     builder::{
@@ -53,6 +53,10 @@ enum RootCommands {
     /// project. These files can then be customized in any way.
     #[command()]
     Eject,
+
+    /// Generate a LaTeX document
+    #[command()]
+    Latex,
 }
 
 fn styles() -> Styles {
@@ -118,6 +122,13 @@ fn main() {
                 eprintln!("Error: {}", e);
             } else {
                 println!("Eject successful");
+            }
+        }
+        RootCommands::Latex => {
+            if let Err(e) = build_latex_project(&args) {
+                eprintln!("Error: {}", e);
+            } else {
+                println!("{}", style("Build complete").bold().green());
             }
         }
     }
@@ -264,4 +275,62 @@ fn build_document(args: &Args, project: &Project, doc: &core::Document) -> Resul
     }
     std::fs::write(file_path, content)?;
     Ok(l)
+}
+
+pub fn build_latex_project(args: &Args) -> Result<()> {
+    let root_path = PathBuf::from(&args.root_path);
+    let project = Project::load(&root_path, false)?;
+    let build_path = root_path.join("dist");
+    if !build_path.exists() {
+        std::fs::create_dir(&build_path)?;
+    }
+    let mut output = String::new();
+    for document in project
+        .root_folder
+        .iter_all_documents()
+        .filter(|d| !d.frontmatter.pdf_exclude)
+    {
+        let renderer = LatexRenderer {
+            render_context: core::RenderContext {
+                project: &project,
+                document,
+            },
+        };
+        let res = renderer.render()?;
+
+        let slug = renderer.slug(&document.url.trim_matches('/').replace(['/', '#', '_'], "-"));
+
+        if let Some(subtitle) = &document.frontmatter.subtitle {
+            output.push_str(&format!(
+                "\\section[{}]{{{}{{\\hfill\\normalsize\\color{{subtitle}} {}}}}}\\label{{sec:{}}}\n",
+                document.frontmatter.title, document.frontmatter.title, subtitle, slug
+            ));
+        } else {
+            output.push_str(&format!(
+                "\\section{{{}}}\\label{{sec:{}}}\n",
+                document.frontmatter.title, slug
+            ));
+        }
+        output.push_str(&res);
+        output.push_str("\\pagebreak\n");
+    }
+
+    let prelude = String::from_utf8(
+        project
+            .path
+            .new_path("_internal/templates/prelude.tex")
+            .read()?
+            .to_vec(),
+    )?
+    .replace("--AUTHOR--", &project.details.author.unwrap_or_default())
+    .replace(
+        "--TITLE--",
+        &format!("\\title{{{}}}", &project.details.name),
+    );
+
+    let mut f = std::fs::File::create(build_path.join("main.tex"))?;
+    f.write_all(prelude.as_bytes())?;
+    f.write_all(output.as_bytes())?;
+    f.write_all(b"\\end{document}")?;
+    Ok(())
 }
