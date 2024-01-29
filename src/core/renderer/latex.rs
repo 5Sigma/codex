@@ -21,6 +21,23 @@ impl<'a> LatexRenderer<'a> {
             .replace('~', "\\~")
             .replace('^', "\\^")
     }
+
+    pub fn render_table_header_row(&self, row: &markdown::mdast::Node) -> crate::Result<String> {
+        let mut out = String::new();
+        if let Some(children) = row.children() {
+            for child in children {
+                out.push_str(&format!(
+                    "\\textbf{{{}}} & ",
+                    self.render_node(child)?
+                        .trim_matches(|c| c == ' ' || c == '&'),
+                ));
+            }
+        }
+        out = out.trim_matches(|c| c == ' ' || c == '&').to_string();
+        out.push_str(" \\\\\n");
+        out.push_str("\\hline\\vspace{2pt}\n");
+        Ok(out)
+    }
 }
 
 impl<'a> Renderer for LatexRenderer<'a> {
@@ -143,7 +160,12 @@ impl<'a> Renderer for LatexRenderer<'a> {
             "\\begin{{tabular}}{{{}}}\n",
             "l ".repeat(col_count).trim()
         ));
-        out.push_str(&self.render_nodes(children)?);
+        let mut i = children.iter();
+        let Some(header_row) = i.next() else {
+            return Ok(out);
+        };
+        out.push_str(&self.render_table_header_row(header_row)?);
+        out.push_str(&self.render_nodes(i.as_slice())?);
         out.push_str("\\end{tabular}\n");
         Ok(out)
     }

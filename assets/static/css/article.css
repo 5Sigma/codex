@@ -129,4 +129,5 @@ ul li {
 
 table thead td {
   font-weight: bold;
+  text-transform: uppercase;
 }

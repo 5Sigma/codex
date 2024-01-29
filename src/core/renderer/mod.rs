@@ -298,7 +298,7 @@ pub trait Renderer {
                         .get("file")
                         .ok_or_else(|| crate::Error::new("No file specified"))?,
                 );
-                dbg!(&csv_file_name.project_root);
+
                 let mut reader = csv::ReaderBuilder::new()
                     .has_headers(false)
                     .from_path(csv_file_name.disk_path())?;

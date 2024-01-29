@@ -58,11 +58,7 @@ impl Renderer for HtmlRenderer<'_> {
         )
     }
     fn render_blockquote(&self, children: &[Node]) -> Result<String> {
-        self.wrap_nodes(
-            r#"<blockquote class="blockquote">"#,
-            "</blockquote>",
-            children,
-        )
+        self.wrap_nodes(r#"<p class="lead">"#, "</p>", children)
     }
 
     fn render_jsx_element(
@@ -281,40 +277,12 @@ mod tests {
 
     #[test]
     pub fn test_csv_table() {
-        let result = vec![
-            "<table class=\"table table-sm table-striped\">",
-            "  <thead>",
-            "    <tr>",
-            "        <th class=\"text-uppercase\">name</th>",
-            "        <th class=\"text-uppercase\">age</th>",
-            "        <th class=\"text-uppercase\">position</th>",
-            "    </tr>",
-            "  </thead>",
-            "  <tr>",
-            "      <td>alice</td>",
-            "      <td>18</td>",
-            "      <td>engineer</td>",
-            "  </tr>",
-            "  <tr>",
-            "      <td>bob</td>",
-            "      <td>19</td>",
-            "      <td>engineer</td>",
-            "  </tr>",
-            "  <tr>",
-            "      <td>charlie</td>",
-            "      <td>20</td>",
-            "      <td>manager</td>",
-            "  </tr>",
-            "</table>",
-        ];
+        let result = "<table class=\"table table-sm table-striped\"><thead><tr><td>name</td><td>age</td><td>position</td></tr></thead><tbody><tr><td>alice</td><td>18</td><td>engineer</td></tr><tr><td>bob</td><td>19</td><td>engineer</td></tr><tr><td>charlie</td><td>20</td><td>manager</td></tr></tbody></table>";
         let project = project_fixture();
         let doc = project.get_document_for_url("/other/csv").unwrap();
         let renderer = super::HtmlRenderer {
             render_context: RenderContext::new(&project, doc),
         };
-        assert_eq!(
-            renderer.render_body().unwrap().lines().collect::<Vec<_>>(),
-            result
-        );
+        assert_eq!(renderer.render_body().unwrap(), result);
     }
 }

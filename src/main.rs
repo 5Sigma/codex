@@ -57,6 +57,10 @@ enum RootCommands {
     /// Generate a LaTeX document
     #[command()]
     Latex,
+
+    /// Generate a PDF document
+    #[command()]
+    Pdf,
 }
 
 fn styles() -> Styles {
@@ -124,11 +128,29 @@ fn main() {
                 println!("Eject successful");
             }
         }
-        RootCommands::Latex => {
-            if let Err(e) = build_latex_project(&args) {
-                eprintln!("Error: {}", e);
-            } else {
+        RootCommands::Latex => match build_latext(&args) {
+            Ok((tex) => {
+                let mut f = std::fs::File::create(build_path.join("main.tex"))?;
+                f.write_all(buffer.as_bytes())?;
+                println!("TeX written");
                 println!("{}", style("Build complete").bold().green());
+            }
+            Err(e) => {
+                eprintln!("Error: {}", e);
+            }
+        },
+
+        RootCommands::Pdf => {
+            let latex = match build_latext(&args) {
+                Ok(tex) => tex,
+                Err(e) => {
+                    eprintln!("Error: {}", e);
+                    std::process::exit(1);
+                }
+            };
+
+            if let Err(e) = build_pdf(&args, latex) {
+                eprintln!("Error: {}", e);
             }
         }
     }
@@ -277,7 +299,38 @@ fn build_document(args: &Args, project: &Project, doc: &core::Document) -> Resul
     Ok(l)
 }
 
-pub fn build_latex_project(args: &Args) -> Result<()> {
+pub fn build_latex_project(args: &Args, tex: bool) -> Result<()> {
+    println!("Starting PDF Build");
+    let now = std::time::Instant::now();
+
+    if tex {
+        let mut f = std::fs::File::create(build_path.join("main.tex"))?;
+        f.write_all(buffer.as_bytes())?;
+        println!("TeX written");
+    } else {
+        let pdf_data = match tectonic::latex_to_pdf(&buffer) {
+            Ok(data) => data,
+            Err(e) => {
+                println!("{}", style(format!("Error: {}", e)).red().bold());
+                std::process::exit(1);
+            }
+        };
+        println!(
+            "PDF built [{} in {}]",
+            pdf_data.len().human_count_bytes(),
+            now.elapsed().human_duration()
+        );
+
+        let mut f = std::fs::File::create(build_path.join("main.pdf"))?;
+        f.write_all(&pdf_data)?;
+    }
+
+    Ok(())
+}
+
+fn build_latext(args: &Args) -> Result<String> {
+    let root_path = PathBuf::from(&args.root_path);
+    let now = std::time::Instant::now();
     let root_path = PathBuf::from(&args.root_path);
     let project = Project::load(&root_path, false)?;
     let build_path = root_path.join("dist");
@@ -328,9 +381,35 @@ pub fn build_latex_project(args: &Args) -> Result<()> {
         &format!("\\title{{{}}}", &project.details.name),
     );
 
-    let mut f = std::fs::File::create(build_path.join("main.tex"))?;
-    f.write_all(prelude.as_bytes())?;
-    f.write_all(output.as_bytes())?;
-    f.write_all(b"\\end{document}")?;
+    let mut buffer = String::new();
+
+    buffer.push_str(&prelude);
+    buffer.push_str(&output);
+    buffer.push_str("\\end{document}");
+
+    println!("Typesetting built [{}]", now.elapsed().human_duration());
+    return Ok(buffer);
+}
+
+fn build_pdf(args: &Args, latex: String) -> Result<()> {
+    let root_path = PathBuf::from(&args.root_path);
+    let project = Project::load(&root_path, false)?;
+    let build_path = root_path.join("dist");
+    let now = std::time::Instant::now();
+    let pdf_data = match tectonic::latex_to_pdf(&latex) {
+        Ok(data) => data,
+        Err(e) => {
+            println!("{}", style(format!("Error: {}", e)).red().bold());
+            std::process::exit(1);
+        }
+    };
+    println!(
+        "PDF built [{} in {}]",
+        pdf_data.len().human_count_bytes(),
+        now.elapsed().human_duration()
+    );
+
+    let mut f = std::fs::File::create(build_path.join("main.pdf"))?;
+    f.write_all(&pdf_data)?;
     Ok(())
 }

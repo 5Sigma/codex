@@ -173,11 +173,12 @@ pub fn scan_folder(root_path: &CodexPath) -> Result<Folder> {
         }
 
         if path.is_dir() {
-            folder
-                .folders
-                .push(scan_folder(&root_path.new_path(path.to_path_buf()))?);
+            folder.folders.push(scan_folder(
+                &root_path.new_path(path.to_path_buf().strip_prefix(&root_path.project_root)?),
+            )?);
         } else if path.extension().and_then(|s| s.to_str()) == Some("md") {
-            let file_path = root_path.new_path(&path);
+            let file_path =
+                root_path.new_path(path.to_path_buf().strip_prefix(&root_path.project_root)?);
             let document = Document::load(file_path)?;
             folder.documents.push(document);
         }
@@ -253,6 +254,20 @@ pub mod tests {
     #[test]
     fn project_load_path() {
         project_fixture();
+    }
+
+    #[test]
+    fn test_document_relative_path() {
+        let project = project_fixture();
+        let doc = project
+            .get_document_for_url("/other/custom_component")
+            .unwrap()
+            .clone();
+
+        assert_eq!(
+            doc.file_path.relative_path.display().to_string(),
+            "other/custom_component.md".to_string()
+        );
     }
 
     #[test]
