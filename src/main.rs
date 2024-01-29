@@ -18,7 +18,7 @@ use clap::{
 enum RootCommands {
     /// The serve command starts a local web server to preview the site
     ///
-    /// The web server will automatically rescan the project folder and rebuild
+    /// The web server will automatically re-scan the project folder and rebuild
     /// the site with every request.
     #[command()]
     Serve {
@@ -63,6 +63,7 @@ enum RootCommands {
     Pdf,
 }
 
+/// Custom styles for clap
 fn styles() -> Styles {
     Styles::styled()
         .header(AnsiColor::Red.on_default() | Effects::BOLD)
@@ -90,91 +91,86 @@ pub struct Args {
 fn main() {
     let args = Args::parse();
     match args.command {
-        RootCommands::Serve { .. } => {
-            server::serve(&args);
-        }
-        RootCommands::Build => {
-            if let Err(e) = build_project(&args) {
-                eprintln!("Error: {}", e);
-            } else {
-                println!("{}", style("Build complete").bold().green());
-            }
-        }
-        RootCommands::Init { path } => {
-            let p = PathBuf::from(path);
-            if p.exists() {
-                println!("Path already exists");
-                std::process::exit(1);
-            } else {
-                if let Err(e) = std::fs::create_dir_all(&p) {
-                    eprintln!("Couldn't create project path: {}", e);
-                    std::process::exit(1);
-                }
-
-                let config_path = p.join("codex.yml");
-                if let Err(e) = std::fs::write(
-                    config_path,
-                    core::assets::get_bytes("_internal/templates/scaffold_config.yml"),
-                ) {
-                    eprintln!("Couldn't create project configuration: {}", e);
-                    std::process::exit(1);
-                }
-            }
-        }
-        RootCommands::Eject => {
-            if let Err(e) = eject_static_files(args.root_path) {
-                eprintln!("Error: {}", e);
-            } else {
-                println!("Eject successful");
-            }
-        }
-        RootCommands::Latex => match build_latext(&args) {
-            Ok((tex) => {
-                let mut f = std::fs::File::create(build_path.join("main.tex"))?;
-                f.write_all(buffer.as_bytes())?;
-                println!("TeX written");
-                println!("{}", style("Build complete").bold().green());
-            }
-            Err(e) => {
-                eprintln!("Error: {}", e);
-            }
-        },
-
-        RootCommands::Pdf => {
-            let latex = match build_latext(&args) {
-                Ok(tex) => tex,
-                Err(e) => {
-                    eprintln!("Error: {}", e);
-                    std::process::exit(1);
-                }
-            };
-
-            if let Err(e) = build_pdf(&args, latex) {
-                eprintln!("Error: {}", e);
-            }
-        }
+        RootCommands::Serve { .. } => handle_command(server::serve),
+        RootCommands::Build => handle_command(command_build),
+        RootCommands::Init { .. } => handle_command(command_init),
+        RootCommands::Eject => handle_command(eject_static_files),
+        RootCommands::Latex => handle_command(command_latex),
+        RootCommands::Pdf => handle_command(command_pdf),
     }
 }
 
-/// Eject the static files from the binary
-fn eject_static_files(root_path: String) -> Result<()> {
-    let root_path = PathBuf::from(root_path);
-    for f_path in EmbeddedAsset::iter().filter(|f| f != "_internal/templates/scaffold_config.yml") {
-        let file = EmbeddedAsset::get(&f_path).unwrap();
-        let file_path = root_path.join(&*f_path);
-        if let Some(parent) = file_path.parent() {
-            if !parent.exists() {
-                std::fs::create_dir_all(parent)?;
-            }
+fn command_init(args: &Args) -> Result<()> {
+    let RootCommands::Init { path } = &args.command else {
+        return Err(anyhow::anyhow!("Invalid command"));
+    };
+
+    let p = PathBuf::from(path);
+    if p.exists() {
+        println!("Path already exists");
+        std::process::exit(1);
+    } else {
+        if let Err(e) = std::fs::create_dir_all(&p) {
+            eprintln!("Couldn't create project path: {}", e);
+            std::process::exit(1);
         }
-        println!("Writing {}", file_path.display());
-        std::fs::write(file_path, file.data)?;
+
+        let config_path = p.join("codex.yml");
+        std::fs::write(
+            config_path,
+            core::assets::get_bytes("_internal/templates/scaffold_config.yml"),
+        )?;
+    }
+    Ok(())
+}
+
+/// internal command to generate a PDF
+fn command_pdf(args: &Args) -> Result<()> {
+    let root_path = PathBuf::from(&args.root_path);
+    let project = Project::load(root_path, false)?;
+    let latex = build_latext(&project)?;
+    let now = std::time::Instant::now();
+    match build_pdf(&project, latex) {
+        Ok(pdf_len) => print_file_built("PDF", pdf_len, now.elapsed()),
+        Err(e) => {
+            eprintln!("Error: {}", e);
+            std::process::exit(1);
+        }
     }
 
     Ok(())
 }
 
-fn build_project(args: &Args) -> Result<()> {
+/// Cinvience function to handle commands
+fn handle_command(f: impl Fn(&Args) -> Result<()>) {
+    let args = Args::parse();
+    if let Err(e) = f(&args) {
+        eprintln!("Error: {}", e);
+        std::process::exit(1);
+    }
+}
+
+/// internal command to generate a LaTeX document
+pub fn command_latex(args: &Args) -> Result<()> {
+    let now = std::time::Instant::now();
+    let root_path = PathBuf::from(&args.root_path);
+    let project = Project::load(root_path, false)?;
+    let latex = build_latext(&project)?;
+
+    let build_path = project.path.disk_path().join("dist");
+    if !build_path.exists() {
+        std::fs::create_dir(&build_path)?;
+    }
+
+    let mut f = std::fs::File::create(build_path.join("main.tex"))?;
+    let size = latex.len();
+    f.write_all(latex.as_bytes())?;
+    print_file_built("main.tex", size, now.elapsed());
+    Ok(())
+}
+
+/// internal command to build the site
+fn command_build(args: &Args) -> Result<()> {
     let root_path = PathBuf::from(&args.root_path);
     let project = Project::load(&root_path, false)?;
     let build_path = root_path.join("dist");
@@ -190,59 +186,51 @@ fn build_project(args: &Args) -> Result<()> {
     let mut total_static_size = 0;
     for file in core::assets::static_files(&project)? {
         static_count += 1;
+        let static_now = std::time::Instant::now();
         let static_size = file.write(
             &PathBuf::from(&project.details.build_path),
             PathBuf::from("static"),
         )?;
         if args.verbose {
-            println!(
-                "Built {} [{}]",
-                file.root_url(),
-                static_size.human_count_bytes()
+            print_file_built(
+                file.disk_path().file_name().unwrap().to_str().unwrap(),
+                static_size,
+                static_now.elapsed(),
             );
         }
         total_static_size += static_size;
     }
     let static_time = now.elapsed();
 
-    if args.verbose {
-        println!("\n");
-    }
-    let mut out = String::new();
-    out.push_str(&style("Built ").dim().to_string());
-    out.push_str(
-        &style(doc_count.0.human_count(" documents"))
-            .bold()
-            .to_string(),
+    print_file_built(&format!("{} documents", doc_count.0), doc_count.1, doc_time);
+    print_file_built(
+        &format!("{} static_files", static_count),
+        total_static_size,
+        static_time,
     );
-    out.push_str(&style(" in ").dim().to_string());
-    out.push_str(&style(doc_time.human_duration()).bold().to_string());
-    out.push_str(&style(" [").dim().to_string());
-    out.push_str(&style(doc_count.1.human_count_bytes()).bold().to_string());
-    out.push_str(&style("] ").dim().to_string());
-    println!("{}", out);
-
-    let mut out = String::new();
-    out.push_str(&style("Built ").dim().to_string());
-    out.push_str(
-        &style(static_count.human_count(" static files"))
-            .bold()
-            .to_string(),
-    );
-    out.push_str(&style(" in ").dim().to_string());
-    out.push_str(&style(static_time.human_duration()).bold().to_string());
-    out.push_str(&style(" [").dim().to_string());
-    out.push_str(
-        &style(total_static_size.human_count_bytes())
-            .bold()
-            .to_string(),
-    );
-    out.push_str(&style("] ").dim().to_string());
-    println!("{}", out);
 
     Ok(())
 }
 
+/// Eject the static files from the binary
+fn eject_static_files(args: &Args) -> Result<()> {
+    let root_path = PathBuf::from(&args.root_path);
+    for f_path in EmbeddedAsset::iter().filter(|f| f != "_internal/templates/scaffold_config.yml") {
+        let file = EmbeddedAsset::get(&f_path).unwrap();
+        let file_path = root_path.join(&*f_path);
+        if let Some(parent) = file_path.parent() {
+            if !parent.exists() {
+                std::fs::create_dir_all(parent)?;
+            }
+        }
+        println!("Writing {}", file_path.display());
+        std::fs::write(file_path, file.data)?;
+    }
+
+    Ok(())
+}
+
+/// Build static site files for a folder and all its sub folders and documents.
 fn build_folder(args: &Args, project: &Project, folder: &core::Folder) -> Result<(usize, usize)> {
     let mut count = 0;
     let mut size = 0;
@@ -258,7 +246,9 @@ fn build_folder(args: &Args, project: &Project, folder: &core::Folder) -> Result
     Ok((count, size))
 }
 
+/// Build static site files for a document.
 fn build_document(args: &Args, project: &Project, doc: &core::Document) -> Result<usize> {
+    let now = std::time::Instant::now();
     let renderer = HtmlRenderer {
         render_context: core::RenderContext {
             project,
@@ -293,50 +283,24 @@ fn build_document(args: &Args, project: &Project, doc: &core::Document) -> Resul
 
     let l = content.len();
     if args.verbose {
-        println!("Built {} [{}]", file_path.display(), l.human_count_bytes());
+        print_file_built(
+            file_path
+                .parent()
+                .unwrap()
+                .file_name()
+                .unwrap()
+                .to_str()
+                .unwrap(),
+            l,
+            now.elapsed(),
+        );
     }
     std::fs::write(file_path, content)?;
     Ok(l)
 }
 
-pub fn build_latex_project(args: &Args, tex: bool) -> Result<()> {
-    println!("Starting PDF Build");
-    let now = std::time::Instant::now();
-
-    if tex {
-        let mut f = std::fs::File::create(build_path.join("main.tex"))?;
-        f.write_all(buffer.as_bytes())?;
-        println!("TeX written");
-    } else {
-        let pdf_data = match tectonic::latex_to_pdf(&buffer) {
-            Ok(data) => data,
-            Err(e) => {
-                println!("{}", style(format!("Error: {}", e)).red().bold());
-                std::process::exit(1);
-            }
-        };
-        println!(
-            "PDF built [{} in {}]",
-            pdf_data.len().human_count_bytes(),
-            now.elapsed().human_duration()
-        );
-
-        let mut f = std::fs::File::create(build_path.join("main.pdf"))?;
-        f.write_all(&pdf_data)?;
-    }
-
-    Ok(())
-}
-
-fn build_latext(args: &Args) -> Result<String> {
-    let root_path = PathBuf::from(&args.root_path);
-    let now = std::time::Instant::now();
-    let root_path = PathBuf::from(&args.root_path);
-    let project = Project::load(&root_path, false)?;
-    let build_path = root_path.join("dist");
-    if !build_path.exists() {
-        std::fs::create_dir(&build_path)?;
-    }
+/// Build a LaTeX document from the project
+fn build_latext(project: &Project) -> Result<String> {
     let mut output = String::new();
     for document in project
         .root_folder
@@ -344,10 +308,7 @@ fn build_latext(args: &Args) -> Result<String> {
         .filter(|d| !d.frontmatter.pdf_exclude)
     {
         let renderer = LatexRenderer {
-            render_context: core::RenderContext {
-                project: &project,
-                document,
-            },
+            render_context: core::RenderContext { project, document },
         };
         let res = renderer.render()?;
 
@@ -375,7 +336,10 @@ fn build_latext(args: &Args) -> Result<String> {
             .read()?
             .to_vec(),
     )?
-    .replace("--AUTHOR--", &project.details.author.unwrap_or_default())
+    .replace(
+        "--AUTHOR--",
+        &project.details.author.clone().unwrap_or_default(),
+    )
     .replace(
         "--TITLE--",
         &format!("\\title{{{}}}", &project.details.name),
@@ -387,29 +351,41 @@ fn build_latext(args: &Args) -> Result<String> {
     buffer.push_str(&output);
     buffer.push_str("\\end{document}");
 
-    println!("Typesetting built [{}]", now.elapsed().human_duration());
-    return Ok(buffer);
+    Ok(buffer)
 }
 
-fn build_pdf(args: &Args, latex: String) -> Result<()> {
-    let root_path = PathBuf::from(&args.root_path);
-    let project = Project::load(&root_path, false)?;
-    let build_path = root_path.join("dist");
-    let now = std::time::Instant::now();
-    let pdf_data = match tectonic::latex_to_pdf(&latex) {
+/// Build a PDF document from the project
+fn build_pdf(project: &Project, latex: String) -> Result<usize> {
+    let build_path = project.path.disk_path().join("dist");
+    let pdf_data = match tectonic::latex_to_pdf(latex) {
         Ok(data) => data,
         Err(e) => {
             println!("{}", style(format!("Error: {}", e)).red().bold());
             std::process::exit(1);
         }
     };
-    println!(
-        "PDF built [{} in {}]",
-        pdf_data.len().human_count_bytes(),
-        now.elapsed().human_duration()
-    );
-
+    let size = pdf_data.len();
     let mut f = std::fs::File::create(build_path.join("main.pdf"))?;
     f.write_all(&pdf_data)?;
-    Ok(())
+    Ok(size)
+}
+
+/// Generate styled string for size and time
+fn size_in_time(size: usize, time: std::time::Duration) -> String {
+    let mut out = String::new();
+    out.push_str(&style(" in ").dim().to_string());
+    out.push_str(&style(time.human_duration()).bold().to_string());
+    out.push_str(&style(" [").dim().to_string());
+    out.push_str(&style(size.human_count_bytes()).bold().to_string());
+    out.push_str(&style("] ").dim().to_string());
+    out
+}
+
+/// Print a file built message
+fn print_file_built(s: &str, size: usize, time: std::time::Duration) {
+    let mut out = String::new();
+    out.push_str(&style("Built ").dim().to_string());
+    out.push_str(&style(s).bold().to_string());
+    out.push_str(&size_in_time(size, time));
+    println!("{}", out);
 }

@@ -1,5 +1,7 @@
 # Project name
 name: My Project
+# The author displayed on the title page during PDF generation
+author: ~
 # The path relative to the project root where the compiled static site files
 # will be placed
 build_path: dist
