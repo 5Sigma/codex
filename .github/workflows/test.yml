@@ -36,7 +36,7 @@ jobs:
          cargo vcpkg build
          export VCPKG_ROOT="${CARGO_TARGET_DIR:-$(pwd)/target}/vcpkg"
          export TECTONIC_DEP_BACKEND=vcpkg
-         cargo test
+         cargo test --features external-harfbuzz
 
   lints:
     name: Lints
