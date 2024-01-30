@@ -27,7 +27,7 @@ jobs:
          export TECTONIC_DEP_BACKEND=vcpkg
          cargo test 
   test-windows:
-    runs-on: windows-latest
+    runs-on: windows-2019
     steps:
      - name: Checkout sources
        uses: actions/checkout@v4
