@@ -36,8 +36,8 @@ jobs:
        run: |
          cargo install cargo-vcpkg
          cargo vcpkg build
-         export VCPKG_ROOT="${CARGO_TARGET_DIR:-$(pwd)/target}/vcpkg"
-         export RUSTFLAGS='-Ctarget-feature=+crt-static'
-         export VCPKGRS_TRIPLET='x64-windows-static-release'
-         export TECTONIC_DEP_BACKEND=vcpkg
+         set VCPKG_ROOT="${CARGO_TARGET_DIR:-$(pwd)/target}/vcpkg"
+         set RUSTFLAGS='-Ctarget-feature=+crt-static'
+         set VCPKGRS_TRIPLET='x64-windows-static-release'
+         set TECTONIC_DEP_BACKEND=vcpkg
          cargo test 
