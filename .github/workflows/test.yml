@@ -7,8 +7,7 @@ on:
 name: Tests
 
 jobs:
-  test:
-    name: test-linux
+  test-linux:
     runs-on: ubuntu-latest
     # strategy:
     #   matrix:
@@ -25,5 +24,20 @@ jobs:
          cargo install cargo-vcpkg
          cargo vcpkg build
          export VCPKG_ROOT="${CARGO_TARGET_DIR:-$(pwd)/target}/vcpkg"
+         export TECTONIC_DEP_BACKEND=vcpkg
+         cargo test 
+  test-windows:
+    runs-on: windows-latest
+    steps:
+     - name: Checkout sources
+       uses: actions/checkout@v4
+
+     - name: Run tests
+       run: |
+         cargo install cargo-vcpkg
+         cargo vcpkg build
+         export VCPKG_ROOT="${CARGO_TARGET_DIR:-$(pwd)/target}/vcpkg"
+         export RUSTFLAGS='-Ctarget-feature=+crt-static'
+         export VCPKGRS_TRIPLET='x64-windows-static-release'
          export TECTONIC_DEP_BACKEND=vcpkg
          cargo test 
