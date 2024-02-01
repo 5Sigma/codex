@@ -84,4 +84,4 @@ pr-run-mode = "plan"
 
 [package.metadata.vcpkg]
 git = "https://github.com/microsoft/vcpkg"
-rev = "b219256"
+rev = "4c1db68"
