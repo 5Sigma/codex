@@ -30,7 +30,8 @@ jobs:
        shell: bash
        run: |
          cargo install cargo-vcpkg
-         cargo vcpkg build  -- --verbose
+         vcpkg install fontconfig freetype "harfbuzz[graphite2]" icu
+         #cargo vcpkg build  -- --verbose
          export VCPKG_ROOT="${CARGO_TARGET_DIR:-$(pwd)/target}/vcpkg"
          export RUSTFLAGS='-Ctarget-feature=+crt-static'
          export VCPKGRS_TRIPLET='x64-windows-static-release'
