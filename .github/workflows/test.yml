@@ -10,30 +10,33 @@ jobs:
   test-linux:
     runs-on: ubuntu-latest
     steps:
-     - name: Checkout sources
-       uses: actions/checkout@v4
+      - name: Checkout sources
+        uses: actions/checkout@v4
 
-     - name: Run tests
-       run: |
-         cargo install cargo-vcpkg
-         cargo vcpkg build
-         export VCPKG_ROOT="${CARGO_TARGET_DIR:-$(pwd)/target}/vcpkg"
-         export TECTONIC_DEP_BACKEND=vcpkg
-         cargo test 
+      - name: Run tests
+        run: |
+          cargo install cargo-vcpkg
+          cargo vcpkg build
+          export VCPKG_ROOT="${CARGO_TARGET_DIR:-$(pwd)/target}/vcpkg"
+          export TECTONIC_DEP_BACKEND=vcpkg
+          cargo test
   test-windows:
     runs-on: windows-2019
     steps:
-     - name: Checkout sources
-       uses: actions/checkout@v4
+      - name: Checkout sources
+        uses: actions/checkout@v4
 
-     - name: Run tests
-       shell: bash
-       run: |
-         cargo install cargo-vcpkg
-         export VCPKG_ROOT="${CARGO_TARGET_DIR:-$(pwd)/target}/vcpkg"
-         vcpkg install fontconfig freetype "harfbuzz[graphite2]" icu
-         #cargo vcpkg build  -- --verbose
-         export RUSTFLAGS='-Ctarget-feature=+crt-static'
-         export VCPKGRS_TRIPLET='x64-windows-static-release'
-         export TECTONIC_DEP_BACKEND=vcpkg
-         cargo test 
+      - name: Run tests
+        shell: bash
+        run: |
+          cargo install cargo-vcpkg
+          export VCPKG_ROOT="${CARGO_TARGET_DIR:-$(pwd)/target}/vcpkg"
+          echo VCPKG_ROOT
+          ls target/
+          ls target/vcpkg
+          vcpkg install fontconfig freetype "harfbuzz[graphite2]" icu
+          #cargo vcpkg build  -- --verbose
+          export RUSTFLAGS='-Ctarget-feature=+crt-static'
+          export VCPKGRS_TRIPLET='x64-windows-static-release'
+          export TECTONIC_DEP_BACKEND=vcpkg
+          cargo test
