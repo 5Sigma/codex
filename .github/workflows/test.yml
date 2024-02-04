@@ -31,7 +31,7 @@ jobs:
         run: |
           cargo install cargo-vcpkg
           export VCPKG_ROOT="${CARGO_TARGET_DIR:-$(pwd)/target}/vcpkg"
-          mkdir $VCPKG_ROOT
+          mkdir -p $VCPKG_ROOT
           vcpkg install --vcpkg-root $VCPKG_ROOT fontconfig freetype "harfbuzz[graphite2]" icu
           #cargo vcpkg build  -- --verbose
           export RUSTFLAGS='-Ctarget-feature=+crt-static'
