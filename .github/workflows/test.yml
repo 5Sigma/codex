@@ -33,8 +33,8 @@ jobs:
           export VCPKG_ROOT="${CARGO_TARGET_DIR:-$(pwd)/target}/vcpkg"
           echo $VCPKG_ROOT
           echo $CARGO_TARGET_DIR
-          ls target/
-          ls target/vcpkg
+          ls $CARGO_TARGET_DIR
+          ls $CARGO_TARGET_DIR/vcpkg
           vcpkg install fontconfig freetype "harfbuzz[graphite2]" icu
           #cargo vcpkg build  -- --verbose
           export RUSTFLAGS='-Ctarget-feature=+crt-static'
