@@ -57,10 +57,6 @@ enum RootCommands {
     /// Generate a LaTeX document
     #[command()]
     Latex,
-
-    /// Generate a PDF document
-    #[command()]
-    Pdf,
 }
 
 /// Custom styles for clap
@@ -96,7 +92,6 @@ fn main() {
         RootCommands::Init { .. } => handle_command(command_init),
         RootCommands::Eject => handle_command(eject_static_files),
         RootCommands::Latex => handle_command(command_latex),
-        RootCommands::Pdf => handle_command(command_pdf),
     }
 }
 
@@ -121,23 +116,6 @@ fn command_init(args: &Args) -> Result<()> {
             core::assets::get_bytes("_internal/templates/scaffold_config.yml"),
         )?;
     }
-    Ok(())
-}
-
-/// internal command to generate a PDF
-fn command_pdf(args: &Args) -> Result<()> {
-    let root_path = PathBuf::from(&args.root_path);
-    let project = Project::load(root_path, false)?;
-    let latex = build_latext(&project)?;
-    let now = std::time::Instant::now();
-    match build_pdf(&project, latex) {
-        Ok(pdf_len) => print_file_built("PDF", pdf_len, now.elapsed()),
-        Err(e) => {
-            eprintln!("Error: {}", e);
-            std::process::exit(1);
-        }
-    }
-
     Ok(())
 }
 
@@ -352,22 +330,6 @@ fn build_latext(project: &Project) -> Result<String> {
     buffer.push_str("\\end{document}");
 
     Ok(buffer)
-}
-
-/// Build a PDF document from the project
-fn build_pdf(project: &Project, latex: String) -> Result<usize> {
-    let build_path = project.path.disk_path().join("dist");
-    let pdf_data = match tectonic::latex_to_pdf(latex) {
-        Ok(data) => data,
-        Err(e) => {
-            println!("{}", style(format!("Error: {}", e)).red().bold());
-            std::process::exit(1);
-        }
-    };
-    let size = pdf_data.len();
-    let mut f = std::fs::File::create(build_path.join("main.pdf"))?;
-    f.write_all(&pdf_data)?;
-    Ok(size)
 }
 
 /// Generate styled string for size and time

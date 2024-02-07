@@ -44,7 +44,6 @@ syntect = "5.1.0"
 human-repr = "1.1.0"
 csv = "1.3.0"
 serde_json = "1.0.111"
-tectonic = "0.14.1"
 
 [dev-dependencies]
 criterion = { version = "0.4", features = ["html_reports"] }
@@ -81,7 +80,3 @@ installers = ["shell", "powershell", "msi"]
 targets = ["aarch64-apple-darwin", "x86_64-apple-darwin", "x86_64-unknown-linux-gnu", "x86_64-pc-windows-msvc"]
 # Publish jobs to run in CI
 pr-run-mode = "plan"
-
-[package.metadata.vcpkg]
-git = "https://github.com/microsoft/vcpkg"
-rev = "4c1db68"

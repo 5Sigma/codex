@@ -15,10 +15,6 @@ jobs:
 
       - name: Run tests
         run: |
-          cargo install cargo-vcpkg
-          cargo vcpkg build
-          export VCPKG_ROOT="${cargo_target_dir:-$(pwd)/target}/vcpkg"
-          export TECTONIC_DEP_BACKEND=vcpkg
           cargo test
   test-windows:
     runs-on: windows-2019
@@ -29,12 +25,4 @@ jobs:
       - name: Run tests
         shell: bash
         run: |
-          cargo install cargo-vcpkg
-          export VCPKG_ROOT="${CARGO_TARGET_DIR:-$(pwd)/target}/vcpkg"
-          mkdir -p $VCPKG_ROOT
-          vcpkg install --vcpkg-root $VCPKG_ROOT fontconfig freetype "harfbuzz[graphite2]" icu
-          #cargo vcpkg build  -- --verbose
-          export RUSTFLAGS='-Ctarget-feature=+crt-static'
-          export VCPKGRS_TRIPLET='x64-windows-static-release'
-          export TECTONIC_DEP_BACKEND=vcpkg
           cargo test
