@@ -265,8 +265,8 @@ pub mod tests {
             .clone();
 
         assert_eq!(
-            doc.file_path.relative_path.display().to_string(),
-            "other/custom_component.md".to_string()
+            doc.file_path.relative_path,
+            PathBuf::from("other").join("custom_component.md")
         );
     }
 
