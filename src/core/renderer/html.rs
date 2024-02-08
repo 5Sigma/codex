@@ -1,9 +1,8 @@
 use std::collections::HashMap;
 
-use crate::{error::Result, json_schema::parse_schema, render_template, Error};
+use crate::{error::Result, render_template, DataContext, Error};
 use handlebars::html_escape;
 use markdown::mdast::Node;
-use serde::Serialize;
 
 use super::{RenderContext, Renderer};
 
@@ -26,150 +25,18 @@ impl<'a> HtmlRenderer<'a> {
         mut attrs: HashMap<String, String>,
         children: &[Node],
     ) -> Result<String> {
-        match name {
-            "CsvTable" => {
-                let csv_file_name = self.render_context.document.file_path.new_path(
-                    attrs
-                        .get("file")
-                        .ok_or_else(|| Error::new("No file specified"))?,
-                );
-                let has_headers = attrs.get("headers").unwrap_or(&"true".to_string()) == "true";
-                let mut reader = csv::ReaderBuilder::new()
-                    .has_headers(has_headers)
-                    .from_path(csv_file_name.disk_path())?;
-
-                #[derive(Debug, Serialize)]
-                struct CsvCtx {
-                    headers: Vec<String>,
-                    rows: Vec<Vec<String>>,
-                }
-
-                let ctx = CsvCtx {
-                    headers: if has_headers {
-                        reader
-                            .headers()?
-                            .iter()
-                            .map(|s| s.to_string())
-                            .collect::<Vec<_>>()
-                    } else {
-                        vec![]
-                    },
-                    rows: reader
-                        .records()
-                        .flat_map(|s| {
-                            s.map(|i| i.iter().map(|s| s.to_string()).collect::<Vec<_>>())
-                        })
-                        .collect::<Vec<_>>(),
-                };
-
-                let cmp_path = self
-                    .render_context
-                    .document
-                    .file_path
-                    .new_path("_internal/components/csv_table.html");
-                render_template(ctx, &String::from_utf8(cmp_path.read()?.to_vec())?)
-            }
-            "JsonSchemaFields" => self.component_json_schema_fields(attrs),
-            "JsonSchemaExample" => self.component_json_schema_example(attrs),
-            "CodeFile" => {
-                let source_file_path = self.render_context.document.file_path.new_path(
-                    attrs
-                        .get("file")
-                        .ok_or_else(|| Error::new("No file specified"))?,
-                );
-
-                #[derive(Debug, Serialize)]
-                struct CodeFileCtx {
-                    lines: Vec<String>,
-                    collapse: bool,
-                    lang: String,
-                }
-
-                let cmp_path = self
-                    .render_context
-                    .document
-                    .file_path
-                    .new_path("_internal/templates/code.html");
-                let lines = highlight_by_extension(
-                    &source_file_path.disk_path(),
-                    &String::from_utf8(source_file_path.read()?.to_vec())?,
-                )?;
-                let ctx = CodeFileCtx {
-                    lines,
-                    collapse: attrs.get("collapsed").unwrap_or(&"false".to_string()) == "true",
-                    lang: "".to_string(),
-                };
-                render_template(ctx, &String::from_utf8(cmp_path.read()?.to_vec())?)
-            }
-            _ => {
-                let cmp_path = self
-                    .render_context
-                    .document
-                    .file_path
-                    .new_path(format!("_internal/components/{}.html", name.to_lowercase()));
-
-                if cmp_path.exists() {
-                    attrs.insert("children".to_string(), self.render_nodes(children)?);
-                    render_template(attrs, &String::from_utf8(cmp_path.read()?.to_vec())?)
-                } else {
-                    Ok("<pre>Unknown Component</pre>".to_string())
-                }
-            }
-        }
-    }
-
-    fn component_json_schema_fields(&self, data: HashMap<String, String>) -> Result<String> {
-        let schema_filename = self.render_context.document.file_path.new_path(
-            data.get("file")
-                .ok_or_else(|| Error::new("No file specified"))?,
-        );
-        let data = schema_filename.read()?;
-        let fields = parse_schema(&data)?;
-
-        let mut output = String::new();
-        for mut field in fields.into_iter() {
-            field.children = self.render_node(&self.parse_ast(&field.children)?)?;
-            let cmp_path = self
-                .render_context
-                .document
-                .file_path
-                .new_path("_internal/components/field.html");
-            output.push_str(&render_template(
-                field,
-                &String::from_utf8(cmp_path.read()?.to_vec())?,
-            )?);
-        }
-
-        Ok(output)
-    }
-
-    fn component_json_schema_example(&self, data: HashMap<String, String>) -> Result<String> {
-        let schema_filename = self.render_context.document.file_path.new_path(
-            data.get("file")
-                .ok_or_else(|| Error::new("No file specified"))?,
-        );
-        let schema_str = schema_filename.read()?;
-        let content = crate::json_schema::build_example(&schema_str)?;
-
-        #[derive(Debug, Serialize)]
-        struct CodeFileCtx {
-            lines: Vec<String>,
-            collapse: bool,
-            lang: String,
-        }
-
         let cmp_path = self
             .render_context
             .document
             .file_path
-            .new_path("_internal/templates/code.html");
-        let lines = highlight("JSON", &content)?;
-        let ctx = CodeFileCtx {
-            lines,
-            collapse: data.get("collapsed").unwrap_or(&"false".to_string()) == "true",
-            lang: "".to_string(),
-        };
-        render_template(ctx, &String::from_utf8(cmp_path.read()?.to_vec())?)
+            .new_path(format!("_internal/components/{}.html", name.to_lowercase()));
+
+        if cmp_path.exists() {
+            attrs.insert("children".to_string(), self.render_nodes(children)?);
+            render_template(attrs, &String::from_utf8(cmp_path.read()?.to_vec())?)
+        } else {
+            Ok("<pre>Unknown Component</pre>".to_string())
+        }
     }
 }
 
@@ -177,12 +44,21 @@ impl Renderer for HtmlRenderer<'_> {
     fn get_context(&self) -> &RenderContext {
         &self.render_context
     }
-    fn render_blockquote(&self, children: &[Node]) -> Result<String> {
-        self.wrap_nodes(
-            r#"<blockquote class="blockquote">"#,
-            "</blockquote>",
-            children,
+    fn finalize_render(&self, data: DataContext) -> Result<String> {
+        crate::render_template(
+            data,
+            &String::from_utf8(
+                self.render_context
+                    .project
+                    .path
+                    .new_path("_internal/templates/article.html")
+                    .read()?
+                    .to_vec(),
+            )?,
         )
+    }
+    fn render_blockquote(&self, children: &[Node]) -> Result<String> {
+        self.wrap_nodes(r#"<p class="lead">"#, "</p>", children)
     }
 
     fn render_jsx_element(
@@ -238,9 +114,21 @@ impl Renderer for HtmlRenderer<'_> {
         self.wrap_nodes(r#"<span class="fw-bold">"#, "</span>", children)
     }
 
-    fn render_code(&self, code: &str, lang: Option<String>) -> Result<String> {
+    fn render_code(
+        &self,
+        code: &str,
+        lang: Option<String>,
+        filepath: Option<std::path::PathBuf>,
+    ) -> Result<String> {
         let lines = if let Some(ref lang) = lang {
             highlight(lang, code.trim()).unwrap_or(
+                html_escape(code)
+                    .lines()
+                    .map(|s| s.to_string())
+                    .collect::<Vec<_>>(),
+            )
+        } else if let Some(ref filepath) = filepath {
+            highlight_by_extension(filepath, code.trim()).unwrap_or(
                 html_escape(code)
                     .lines()
                     .map(|s| s.to_string())
@@ -291,6 +179,21 @@ impl Renderer for HtmlRenderer<'_> {
     }
     fn render_table_row(&self, children: &[Node]) -> Result<String> {
         self.wrap_nodes("<tr>", "</tr>", children)
+    }
+
+    fn render_table(&self, content: String) -> Result<String> {
+        Ok(format!(
+            r#"<table class="table table-sm table-striped">{}</table>"#,
+            content
+        ))
+    }
+
+    fn render_table_header(&self, content: String) -> Result<String> {
+        Ok(format!("<thead>{}</thead>", content))
+    }
+
+    fn render_table_body(&self, content: String) -> Result<String> {
+        Ok(format!("<tbody>{}</tbody>", content))
     }
 
     fn render_table_cell(&self, children: &[Node]) -> Result<String> {
@@ -374,40 +277,12 @@ mod tests {
 
     #[test]
     pub fn test_csv_table() {
-        let result = vec![
-            "<table class=\"table table-sm table-striped\">",
-            "  <thead>",
-            "    <tr>",
-            "        <th class=\"text-uppercase\">name</th>",
-            "        <th class=\"text-uppercase\">age</th>",
-            "        <th class=\"text-uppercase\">position</th>",
-            "    </tr>",
-            "  </thead>",
-            "  <tr>",
-            "      <td>alice</td>",
-            "      <td>18</td>",
-            "      <td>engineer</td>",
-            "  </tr>",
-            "  <tr>",
-            "      <td>bob</td>",
-            "      <td>19</td>",
-            "      <td>engineer</td>",
-            "  </tr>",
-            "  <tr>",
-            "      <td>charlie</td>",
-            "      <td>20</td>",
-            "      <td>manager</td>",
-            "  </tr>",
-            "</table>",
-        ];
+        let result = "<table class=\"table table-sm table-striped\"><thead><tr><td>name</td><td>age</td><td>position</td></tr></thead><tbody><tr><td>alice</td><td>18</td><td>engineer</td></tr><tr><td>bob</td><td>19</td><td>engineer</td></tr><tr><td>charlie</td><td>20</td><td>manager</td></tr></tbody></table>";
         let project = project_fixture();
         let doc = project.get_document_for_url("/other/csv").unwrap();
         let renderer = super::HtmlRenderer {
             render_context: RenderContext::new(&project, doc),
         };
-        assert_eq!(
-            renderer.render_body().unwrap().lines().collect::<Vec<_>>(),
-            result
-        );
+        assert_eq!(renderer.render_body().unwrap(), result);
     }
 }

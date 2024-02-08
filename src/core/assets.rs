@@ -34,7 +34,11 @@ pub fn static_files(project: &Project) -> Result<Vec<CodexPath>> {
         for entry in walkdir::WalkDir::new(project.path.disk_path().join("static")) {
             let entry = entry?;
             if entry.file_type().is_file() {
-                assets.push(project.path.new_path(entry.path()));
+                assets.push(
+                    project
+                        .path
+                        .new_path(entry.path().strip_prefix(&project.path.project_root)?),
+                )
             }
         }
     }
@@ -44,8 +48,8 @@ pub fn static_files(project: &Project) -> Result<Vec<CodexPath>> {
 
 #[derive(Debug, Eq, PartialEq, Clone, Serialize)]
 pub struct CodexPath {
-    project_root: PathBuf,
-    relative_path: PathBuf,
+    pub(crate) project_root: PathBuf,
+    pub(crate) relative_path: PathBuf,
 }
 
 impl CodexPath {
@@ -71,15 +75,10 @@ impl CodexPath {
         P: Into<PathBuf>,
     {
         let relative_path: PathBuf = relative_path.into();
-        let rel_path = if relative_path.starts_with(&self.project_root) {
-            relative_path.strip_prefix(&self.project_root).unwrap()
-        } else {
-            &relative_path
-        };
 
         Self {
             project_root: self.project_root.clone(),
-            relative_path: rel_path.to_path_buf(),
+            relative_path,
         }
     }
 
@@ -96,7 +95,7 @@ impl CodexPath {
     {
         Self {
             project_root: project_root.into(),
-            relative_path: PathBuf::from("."),
+            relative_path: PathBuf::from(""),
         }
     }
 
@@ -201,7 +200,10 @@ impl CodexPath {
                 .unwrap()
                 .data)
         } else {
-            Err(Error::new("Asset not found"))
+            Err(Error::new(format!(
+                "Asset not found: {}",
+                self.disk_path().display()
+            )))
         }
     }
 
@@ -264,9 +266,10 @@ mod tests {
     fn test_static_assets() {
         let project = Project::load(PathBuf::from("test").join("fixture"), false).unwrap();
         let assets = crate::assets::static_files(&project).unwrap();
+        dbg!(&assets);
         assert!(assets
             .iter()
-            .map(|a| dbg!(a.disk_path().display().to_string()))
+            .map(|a| a.disk_path().display().to_string())
             .collect::<Vec<_>>()
             .contains(
                 &PathBuf::from("test")

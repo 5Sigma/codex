@@ -1,6 +1,6 @@
 use markdown::{mdast::Node, MdxExpressionKind, MdxSignal};
 
-use crate::{assets::CodexPath, Project, Result};
+use crate::{assets::CodexPath, Result};
 
 /// The front matter of a document
 /// This is used to store metadata about a document
@@ -23,6 +23,7 @@ pub struct FrontMatter {
     /// A path to a JSON schema file that will be used to generate the
     /// document.
     pub json_schema: Option<String>,
+    pub pdf_exclude: bool,
 }
 
 /// A document or page in the project
@@ -44,7 +45,7 @@ impl std::fmt::Debug for Document {
 }
 
 impl Document {
-    pub fn load(project: &Project, file_path: CodexPath) -> Result<Self> {
+    pub fn load(file_path: CodexPath) -> Result<Self> {
         // Generate the table of contents
 
         let ast = parse(&file_path)?;

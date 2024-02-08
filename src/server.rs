@@ -10,7 +10,7 @@ struct ServerHandler {
     project: Project,
 }
 
-pub fn serve(args: &crate::Args) {
+pub fn serve(args: &crate::Args) -> anyhow::Result<()> {
     let RootCommands::Serve { port } = &args.command else {
         panic!("Expected Serve command");
     };
@@ -51,6 +51,7 @@ pub fn serve(args: &crate::Args) {
             output_log(&url, now.elapsed(), size);
         }
     });
+    Ok(())
 }
 
 impl ServerHandler {

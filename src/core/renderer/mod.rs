@@ -1,9 +1,13 @@
 #![allow(unused_variables)]
 mod html;
 pub use html::HtmlRenderer;
+mod latex;
+pub use latex::LatexRenderer;
 
 use crate::{assets::CodexPath, error::Result, Document, FrontMatter, Project};
-use markdown::mdast::{AttributeContent, AttributeValue, MdxJsxAttribute, Node};
+use markdown::mdast::{
+    AttributeContent, AttributeValue, MdxJsxAttribute, Node, TableCell, TableRow,
+};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -80,6 +84,7 @@ pub struct CodeContext {
 
 pub trait Renderer {
     fn get_context(&self) -> &RenderContext;
+    fn finalize_render(&self, data: DataContext) -> Result<String>;
     fn render_body(&self) -> Result<String> {
         let ast = self.parse(&self.get_context().document.file_path)?;
         let body = self.render_node(&ast)?;
@@ -104,30 +109,34 @@ pub trait Renderer {
         };
 
         if let Some(ref schema_file) = ctx.document.frontmatter.json_schema {
-            data.body.push_str("<h4 class=\"mt-4\">Fields</h4>");
-            data.body.push_str(&self.render_jsx_element(
+            data.body.push_str(&self.render_heading(
+                1,
+                &[Node::Text(markdown::mdast::Text {
+                    value: "Fields".to_string(),
+                    position: Default::default(),
+                })],
+            )?);
+
+            data.body.push_str(&self.handle_jsx_element(
                 "JsonSchemaFields",
                 HashMap::from([("file".to_string(), schema_file.to_string())]),
                 &[],
             )?);
-            data.body.push_str("<h4 class=\"mt-4\">Example</h4>");
-            data.body.push_str(&self.render_jsx_element(
+            data.body.push_str(&self.render_heading(
+                1,
+                &[Node::Text(markdown::mdast::Text {
+                    value: "Example".to_string(),
+                    position: Default::default(),
+                })],
+            )?);
+            data.body.push_str(&self.handle_jsx_element(
                 "JsonSchemaExample",
                 HashMap::from([("file".to_string(), schema_file.to_string())]),
                 &[],
             )?);
         }
 
-        crate::render_template(
-            data,
-            &String::from_utf8(
-                ctx.project
-                    .path
-                    .new_path("_internal/templates/article.html")
-                    .read()?
-                    .to_vec(),
-            )?,
-        )
+        self.finalize_render(data)
     }
 
     fn render_nodes(&self, nodes: &[Node]) -> Result<String> {
@@ -193,13 +202,24 @@ pub trait Renderer {
         Ok(text.to_string())
     }
 
-    fn render_code(&self, code: &str, lang: Option<String>) -> Result<String> {
+    fn render_code(
+        &self,
+        code: &str,
+        lang: Option<String>,
+        filepath: Option<std::path::PathBuf>,
+    ) -> Result<String> {
         Ok(String::new())
     }
     fn render_heading(&self, depth: u8, children: &[Node]) -> Result<String> {
         Ok(String::new())
     }
-    fn render_table(&self, children: &[Node]) -> Result<String> {
+    fn render_table_header(&self, content: String) -> Result<String> {
+        Ok(String::new())
+    }
+    fn render_table_body(&self, content: String) -> Result<String> {
+        Ok(String::new())
+    }
+    fn render_table(&self, content: String) -> Result<String> {
         Ok(String::new())
     }
     fn render_thematic_break(&self) -> Result<String> {
@@ -220,6 +240,97 @@ pub trait Renderer {
         Ok(String::new())
     }
 
+    fn handle_jsx_element(
+        &self,
+        name: &str,
+        attrs: HashMap<String, String>,
+        children: &[Node],
+    ) -> Result<String> {
+        match name {
+            "JsonSchemaFields" => {
+                let schema_filename = self.get_context().document.file_path.new_path(
+                    attrs
+                        .get("file")
+                        .ok_or_else(|| crate::Error::new("No file specified"))?,
+                );
+                let data = schema_filename.read()?;
+                let fields = crate::json_schema::parse_schema(&data)?;
+                let mut output = String::new();
+                for field in fields.into_iter() {
+                    let attrs = HashMap::from([
+                        ("name".to_string(), field.name),
+                        ("type".to_string(), field.data_type),
+                        ("children".to_string(), field.children),
+                        ("required".to_string(), field.required.to_string()),
+                        ("deprecated".to_string(), field.deprecated.to_string()),
+                    ]);
+                    output.push_str(&self.render_jsx_element("Field", attrs, children)?);
+                }
+                Ok(output)
+            }
+            "JsonSchemaExample" => {
+                let schema_filename = self.get_context().document.file_path.new_path(
+                    attrs
+                        .get("file")
+                        .ok_or_else(|| crate::Error::new("No file specified"))?,
+                );
+                let schema_str = schema_filename.read()?;
+                let content = crate::json_schema::build_example(&schema_str)?;
+
+                self.render_code(&content, Some("JSON".to_string()), None)
+            }
+            "CodeFile" => {
+                let source_file_path = self.get_context().document.file_path.new_path(
+                    attrs
+                        .get("file")
+                        .ok_or_else(|| crate::Error::new("No file specified"))?,
+                );
+
+                self.render_code(
+                    &String::from_utf8(source_file_path.read()?.to_vec())?,
+                    None,
+                    Some(source_file_path.disk_path()),
+                )
+            }
+            "CsvTable" => {
+                let csv_file_name = self.get_context().document.file_path.new_path(
+                    attrs
+                        .get("file")
+                        .ok_or_else(|| crate::Error::new("No file specified"))?,
+                );
+
+                let mut reader = csv::ReaderBuilder::new()
+                    .has_headers(false)
+                    .from_path(csv_file_name.disk_path())?;
+
+                let rows = reader
+                    .records()
+                    .map(|r| {
+                        Node::TableRow(TableRow {
+                            children: r
+                                .unwrap()
+                                .iter()
+                                .map(|c| {
+                                    Node::TableCell(TableCell {
+                                        children: vec![Node::Text(markdown::mdast::Text {
+                                            value: c.to_string(),
+                                            position: Default::default(),
+                                        })],
+                                        position: Default::default(),
+                                    })
+                                })
+                                .collect::<Vec<_>>(),
+                            position: Default::default(),
+                        })
+                    })
+                    .collect::<Vec<_>>();
+
+                self.handle_table(&rows)
+            }
+            _ => self.render_jsx_element(name, attrs, children),
+        }
+    }
+
     fn render_node(&self, node: &markdown::mdast::Node) -> Result<String> {
         let ctx = self.get_context();
         match node {
@@ -227,26 +338,22 @@ pub trait Renderer {
             Node::BlockQuote(block_quote) => self.render_blockquote(&block_quote.children),
             Node::FootnoteDefinition(f) => self.render_footnote_definition(&f.identifier, &f.label),
             Node::MdxJsxFlowElement(el) => {
-                if let Some(name) = el.name.as_ref() {
-                    self.render_jsx_element(
-                        name,
-                        self.convert_component_attributes(&el.attributes),
-                        &el.children,
-                    )
-                } else {
-                    Ok("".to_string())
-                }
+                let attrs = self.convert_component_attributes(&el.attributes);
+                let name = el
+                    .name
+                    .as_ref()
+                    .ok_or_else(|| crate::Error::new("Missing name"))?;
+
+                self.handle_jsx_element(name, attrs, &el.children)
             }
             Node::MdxJsxTextElement(el) => {
-                if let Some(name) = el.name.as_ref() {
-                    self.render_jsx_element(
-                        name,
-                        self.convert_component_attributes(&el.attributes),
-                        &el.children,
-                    )
-                } else {
-                    Ok("".to_string())
-                }
+                let attrs = self.convert_component_attributes(&el.attributes);
+                let name = el
+                    .name
+                    .as_ref()
+                    .ok_or_else(|| crate::Error::new("Missing name"))?;
+
+                self.handle_jsx_element(name, attrs, &el.children)
             }
             Node::List(list) => self.render_list(list.ordered, &list.children),
             Node::MdxjsEsm(_) => Ok("".to_string()),
@@ -277,18 +384,32 @@ pub trait Renderer {
             Node::LinkReference(_) => Ok("".to_string()),
             Node::Strong(bold) => self.render_bold(&bold.children),
             Node::Text(text) => self.render_text(&text.value),
-            Node::Code(code) => self.render_code(&code.value, code.lang.clone()),
+            Node::Code(code) => self.render_code(&code.value, code.lang.clone(), None),
             Node::Math(_) => Ok("".to_string()),
             Node::MdxFlowExpression(exp) => self.render_expression(&exp.value),
             Node::Heading(h) => self.render_heading(h.depth, &h.children),
-            Node::Table(table) => self.render_table(&table.children),
+            Node::Table(table) => self.handle_table(&table.children),
             Node::ThematicBreak(_) => self.render_thematic_break(),
-            Node::TableRow(node) => self.render_table_row(&node.children),
+            Node::TableRow(ref node) => self.render_table_row(&node.children),
+
             Node::TableCell(node) => self.render_table_cell(&node.children),
             Node::ListItem(li) => self.render_list_item(li.checked, &li.children),
             Node::Definition(_) => Ok("".to_string()),
             Node::Paragraph(p) => self.render_paragraph(&p.children),
         }
+    }
+
+    fn handle_table(&self, children: &[Node]) -> Result<String> {
+        let mut i = children.iter().filter(|i| matches!(i, Node::TableRow(_)));
+        let Some(header_row) = i.next() else {
+            return Ok(String::new());
+        };
+        let rows = i.cloned().collect::<Vec<_>>();
+
+        let mut out = String::new();
+        out.push_str(&self.render_table_header(self.render_node(header_row)?)?);
+        out.push_str(&self.render_table_body(self.render_nodes(&rows)?)?);
+        self.render_table(out)
     }
 
     fn convert_component_attributes(

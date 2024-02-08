@@ -1,0 +1,72 @@
+\documentclass{article}
+
+\usepackage[T1]{fontenc}
+\usepackage[fira]{fontsetup}
+\usepackage{listings}
+\usepackage{soulpos}
+\usepackage{xcolor}
+\usepackage{fancyhdr}
+\usepackage[framemethod=tikz]{mdframed}
+\usepackage{hyperref}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    filecolor=magenta,      
+    urlcolor=blue,
+    pdftitle={--TITLE--},
+    pdfpagemode=FullScreen,
+    }
+
+--TITLE--
+--AUTHOR--
+\date{}
+
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codenumbers}{rgb}{0.3,0.3,0.3}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{codefg}{rgb}{0.05,0.05,0.05}
+\definecolor{codebg}{rgb}{0.99,0.99,0.99}
+\definecolor{rulecolor}{rgb}{0.8,0.8,0.8}
+\definecolor{subtitle}{rgb}{0.4,0.4,0.4}
+
+\lstdefinestyle{cbstyle}{
+    backgroundcolor=\color{codebg},   
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\color{codenumbers},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize\bf\color{codefg},
+    breakatwhitespace=false,         
+    breaklines=true,                 
+    captionpos=b,                    
+    keepspaces=true,                 
+    numbers=left,                    
+    numbersep=10pt,                  
+    showspaces=false,                
+    rulecolor=\color{rulecolor},
+    showstringspaces=false,
+    showtabs=false,                  
+    tabsize=2,
+    frameround=tttt,
+    frame=single,
+    belowskip=3pt,
+}
+
+\lstset{style=cbstyle}
+
+\newcommand{\field}[4]{
+  {\raggedright\noindent\textbf{#1}\hfill\textit{#2}}\break
+  #4 \bigbreak
+}
+
+\begin{document}
+\pagestyle{fancy}
+\maketitle
+\pagebreak
+{
+  \hypersetup{linkcolor=black}
+  \tableofcontents
+}
+\pagebreak
+
