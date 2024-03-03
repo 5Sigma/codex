@@ -119,7 +119,7 @@ fn command_init(args: &Args) -> Result<()> {
     Ok(())
 }
 
-/// Cinvience function to handle commands
+/// Convienence function to handle commands
 fn handle_command(f: impl Fn(&Args) -> Result<()>) {
     let args = Args::parse();
     if let Err(e) = f(&args) {
