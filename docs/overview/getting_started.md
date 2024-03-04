@@ -26,6 +26,16 @@ curl --proto \
 ```
 
 
+## NixOS
+
+Codex can be installed via a flake in NixOS by adding it to your packages list: 
+
+```
+(builtins.getFlake "github:5Sigma/codex").packages.x86_64-linux.default
+
+```
+
+
 ## Windows via Power Shell script
 
 On windows Codex can be installed via Power Shell 
