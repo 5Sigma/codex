@@ -35,7 +35,8 @@ impl Folder {
         }
     }
     pub fn get_name(&self) -> String {
-        self.details.name.clone().unwrap_or(self.name.clone())
+        let raw_name = self.details.name.clone().unwrap_or(self.name.clone());
+        raw_name.replace("-", " ").replace("_", " ")
     }
 
     pub fn iter_all_documents<'a>(&'a self) -> Box<dyn Iterator<Item = &Document> + 'a> {
