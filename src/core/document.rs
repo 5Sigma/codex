@@ -74,9 +74,12 @@ impl Document {
 
 fn parse(file_path: &CodexPath) -> Result<Node> {
     let content = String::from_utf8(file_path.read()?.to_vec())?;
-
-    // Parse the markdown into an AST
-    parse_ast(&content)
+    match parse_ast(&content) {
+        Ok(ast) => Ok(ast),
+        Err(e) => {
+            parse_ast(&format!(r#"<Alert title="Parsing error" style="danger">{}</Alert>"#, e.to_string()))
+        }
+    }
 }
 
 fn parse_ast(content: &str) -> Result<Node> {

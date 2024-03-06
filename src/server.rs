@@ -82,11 +82,10 @@ impl ServerHandler {
                     document: doc,
                 },
             };
-            let page_content = renderer.render().unwrap();
-            // let page_content = match doc.page_content(&self.project) {
-            //     Ok(i) => i,
-            //     Err(e) => format!("<pre>{}</pre>", e),
-            // };
+            let page_content = match renderer.render() {
+                Ok(i) => i,
+                Err(e) => format!(r#"<div class="alert alert-danger">{}</div>"#, e),
+            };
             let l = page_content.len();
             let response = Response::from_string(page_content).with_header(tiny_http::Header {
                 field: "Content-Type".parse().unwrap(),

@@ -443,7 +443,12 @@ pub trait Renderer {
         let content = String::from_utf8(file_path.read()?.to_vec())?;
 
         // Parse the markdown into an AST
-        self.parse_ast(&content)
+        match self.parse_ast(&content) {
+            Ok(ast) => Ok(ast),
+            Err(e) => {
+                self.parse_ast(&format!(r#"<Alert title="Parsing error" style="danger">{}</Alert>"#, e.to_string()))
+            }
+        }
     }
 
     fn parse_ast(&self, content: &str) -> Result<Node> {
