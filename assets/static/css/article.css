@@ -126,6 +126,11 @@ ul li {
   margin-left: 20px;
 }
 
+p.lead {
+  font-size: 1.5em;
+  font-weight: light;
+}
+
 
 table thead td {
   font-weight: bold;

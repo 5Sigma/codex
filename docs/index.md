@@ -71,7 +71,7 @@ _Component Architecture_ based on JSX.
 
 # Frequently Asked Questions
 
-> Can the color scheme, themes, and other visual styling by modified.
+### Can the color scheme, themes, and other visual styling by modified.
 
 Codex has no theme engine. It has a single default visual style. There are no 
 configurational options for altering the visual style of the built pages.
@@ -79,18 +79,18 @@ configurational options for altering the visual style of the built pages.
 However, all the templates that are used to build the final site can be 
 overwritten, effectively making the entire site 100% customizable.
 
-> Does codex support writing formats other than Markdown, such as OrgMode
+### Does codex support writing formats other than Markdown, such as OrgMode
 
 Currently, it does not.
 
-> Can custom JSX components be used 
+### Can custom JSX components be used 
 
 Yes, additional components can be written using a handlebars syntax for the 
 component template and used in markdown with JSX syntax.
 
  See [Custom Components](/components/custom-components).
 
-> What kind of documentation is codex suited for.  
+### What kind of documentation is codex suited for.  
 
 Codex can be used for most technical documentation but the use cases that are 
 front most from the perspective of it's development are:

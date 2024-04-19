@@ -115,6 +115,13 @@ fn command_init(args: &Args) -> Result<()> {
             config_path,
             core::assets::get_bytes("_internal/templates/scaffold_config.yml"),
         )?;
+
+
+        let index_path = p.join("index.md");
+        std::fs::write(
+            index_path,
+            core::assets::get_bytes("_internal/templates/scaffold_index.md"),
+        )?;
     }
     Ok(())
 }
