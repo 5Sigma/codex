@@ -257,13 +257,15 @@ pub trait Renderer {
                 let fields = crate::json_schema::parse_schema(&data)?;
                 let mut output = String::new();
                 for field in fields.into_iter() {
-                    let attrs = HashMap::from([
+                    let mut attrs = HashMap::from([
                         ("name".to_string(), field.name),
                         ("type".to_string(), field.data_type),
                         ("children".to_string(), field.children),
                         ("required".to_string(), field.required.to_string()),
-                        ("deprecated".to_string(), field.deprecated.to_string()),
                     ]);
+                    if field.deprecated {
+                        attrs.insert("deprecated".to_string(), "true".to_string());
+                    }
                     output.push_str(&self.render_jsx_element("Field", attrs, children)?);
                 }
                 Ok(output)
