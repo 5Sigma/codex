@@ -16,18 +16,17 @@
   </head>
   <body
       data-bs-spy="scroll" 
-      data-bs-target="#toc" 
-      data-bs-smooth-scroll="true">
-      <div class="p-3 fixed-top bg-white text-secondary">
-        <div class="container-lg bg-white">
+      data-bs-target="#toc">
+      <div class="p-2 pt-3 fixed-top text-dark header-bar">
+        <div class="container-lg align-middle">
           <div class="d-flex justify-content-between">
-            <div class="fw-bold">
+            <div class="lead">
               {{project.name}}
             </div>
             <div>
               {{#if project.repo_url}}
                 <a 
-                  class="text-dark me-4 link-underline-opacity-0" 
+                  class="text-dark me-4 link-underline-opacity-0 lead"
                   data-bs-toggle="tooltip" 
                   data-bs-placement="top" 
                   title="Source code"
@@ -35,7 +34,7 @@
               {{/if}}
               {{#if project.project_page}}
                 <a 
-                  class="text-dark me-3 link-underline-opacity-0" 
+                  class="text-dark me-3 link-underline-opacity-0 lead"
                   data-bs-toggle="tooltip" 
                   data-bs-placement="top" 
                   title="Home page"
@@ -54,17 +53,29 @@
             <div class="pb-3">
               {{#each sitemap.pages}}
                 {{#if this.frontmatter.title}}
-                <a class="text-truncate pe-3 fs-6 fw-light text-capitalie d-block link-underline-opacity-0 link-dark link-underline-opacity-75-hover" 
-                   href="{{join_url ../project.base_url this.url}}">{{this.frontmatter.title}}</a>
+                  {{#if (eq this.url ../current_url)}}
+                    <span class="active-menu-item ps-2 text-truncate fs-6 fw-light text-capitalize d-inline-block">
+                      {{this.frontmatter.title}}
+                    </span>
+                  {{else}}
+                    <a class="ps-2 inactive-menu-item text-truncate fs-6 fw-light text-capitalie d-block link-underline-opacity-0 link-dark link-underline-opacity-75-hover"
+                      href="{{join_url ../../project.base_url this.url}}">{{this.frontmatter.title}}</a>
+                  {{/if}}
                 {{/if}}
               {{/each}}
               </div>
             {{#each sitemap.folders}}
               <div class="pb-3">
-                <div class="text-capitalize fw-bold fs-7">{{this.name}}</div>
+                <div class="fw-bold fs-7 text-uppercase">{{this.name}}</div>
                 {{#each this.pages}}
-                  <a class="text-truncate pe-3 fs-6 fw-light text-capitalie d-block link-underline-opacity-0 link-dark link-underline-opacity-75-hover" 
-                     href="{{join_url ../../project.base_url this.url}}">{{this.frontmatter.title}}</a>
+                  {{#if (eq this.url ../../current_url)}}
+                    <span class="active-menu-item ps-2 text-truncate fs-6 fw-light text-capitalize d-inline-block">
+                      {{this.frontmatter.title}}
+                    </span>
+                  {{else}}
+                    <a class="ps-2 inactive-menu-item text-truncate fs-6 fw-light text-capitalie d-block link-underline-opacity-0 link-dark link-underline-opacity-75-hover"
+                      href="{{join_url ../../project.base_url this.url}}">{{this.frontmatter.title}}</a>
+                  {{/if}}
                 {{/each}}
               </div>
             {{/each}}
