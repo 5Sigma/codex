@@ -10,10 +10,12 @@
 [![CI](https://github.com/5sigma/arkham/actions/workflows/ci.yml/badge.svg)](https://github.com/5sigma/arkham/actions/workflows/ci.yml)
 
 [Read The Guide](https://codex.5sigma.io)
+
 <!-- prettier-ignore-end -->
-        <br/>
-        <br/>
-    <p>
+
+<br/>
+<br/>
+<p>
 </div>
 
 ![Welcome](docs/static/welcome.png)
