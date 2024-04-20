@@ -24,7 +24,8 @@ Its primary goal is minimal configuration, quick deployment, and easy modificati
 
 Because codex is primarily built for technical documentation it does not use standard Markdown. It uses a super syntax of Markdown with a JSX style component system. This gives it a lot more versatility in the types of content it can display, while still keeping the editing rather simple.
 
-Features
+## Features
+
 - Easily edit documentation projects using markdown-like syntax.
 - Store projects as plain text and version them with the parent project.
 - Build static web sites from documentation
