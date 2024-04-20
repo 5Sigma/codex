@@ -4,6 +4,9 @@ body {
   font-size: 15px;
 }
 
+.header-bar {
+}
+
 .full-height {
   min-height: 100vh;
 }
@@ -17,7 +20,15 @@ header {
   font-size: 32px;
   font-weight: 700;
   padding-left: 20px;
-  margin-top: 50px;
+  margin-top: 80px;
+}
+
+.active-menu-item {
+  border-left: 4px solid #444;
+}
+
+.inactive-menu-item {
+  border-left: 4px solid #eee;
 }
 
 .subheader {
@@ -98,9 +109,10 @@ code.inline {
 
 hr {
   border: 0;
-  border-top: 1px solid #999;
-  width: 60%;
-  margin: 20px auto;
+  width: 90%;
+  height: 2px;
+  background: #444;
+  margin: 50px auto;
 }
 
 .alert p:last-child {

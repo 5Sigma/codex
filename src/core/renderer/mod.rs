@@ -74,6 +74,7 @@ pub struct DataContext {
     pub project: crate::ProjectDetails,
     pub toc: Vec<TocEntry>,
     pub modified: Option<String>,
+    pub current_url: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Default)]
@@ -99,6 +100,7 @@ pub trait Renderer {
             body: self.render_body()?,
             document: ctx.document.frontmatter.clone(),
             sitemap,
+            current_url: ctx.document.url.clone(),
             project: ctx.project.details.clone(),
             toc: self
                 .parse(&ctx.document.file_path)?

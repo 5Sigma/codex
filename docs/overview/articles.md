@@ -15,6 +15,7 @@ Text can be formatted as bold or italic, or strike through.
 
 **Bold**, _italic_, ~~dfsdfsdf~~ 
 
+
 # Links
 
 Hyper links can be added using standard markdown sytntax. 
@@ -29,6 +30,7 @@ text, in lowercase, with all spaces and underscores converted to hypens.
 [Codex](https://codex.5sigma.io)
 ```
 [Codex](https://codex.5sigma.io)
+
 
 # Block quotes
 
