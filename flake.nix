@@ -11,7 +11,7 @@
       };
       packages.${system}.default = pkgs.rustPlatform.buildRustPackage {
         pname = "codex";
-        version = "0.4.3";
+        version = "0.4.5";
         cargoLock.lockFile = ./Cargo.lock;
         src = pkgs.lib.cleanSource ./.;
       };
