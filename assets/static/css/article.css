@@ -109,10 +109,10 @@ code.inline {
 
 hr {
   border: 0;
-  width: 90%;
-  height: 2px;
+  width: 80%;
+  height: 1px;
   background: #444;
-  margin: 50px auto;
+  margin: 20px auto;
 }
 
 .alert p:last-child {
