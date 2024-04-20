@@ -20,12 +20,14 @@
 
 Codex is an opinionated, but flexible, static site generator; built specifically for technical documentation.
 
-Its primary goal is minimal configuration, quick deployment, and easy modification. In order to do this, it is opinionated by default. However, almost all parts of the system can be ejected from defaults and overwritten. This gives the ability to setup quickly with a sane, and recommended, configuration; or reconfigure everything to suit additional needs.
+Its primary goal is minimal configuration, quick deployment, and easy modification. In order to do this, it is opinionated by default. However, almost all parts of the system can be ejected from defaults and overwritten. This gives the ability to setup quickly with a sane configuration, or reconfigure everything to suit additional needs.
+
+Because codex is primarily built for technical documentation it does not use standard Markdown. It uses a super syntax of Markdown with a JSX style component system. This gives it a lot more versatility in the types of content it can display, while still keeping the editing rather simple.
 
 Features
 - Easily edit documentation projects using markdown-like syntax.
 - Store projects as plain text and version them with the parent project.
-- Build static websites from documentation
+- Build static web sites from documentation
 - Build LaTeX files from documentation
 - Shipped as a single binary and needs no external tools
 
