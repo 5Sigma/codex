@@ -46,6 +46,7 @@ fn mul(
     Ok(())
 }
 
+
 fn join_url(
     h: &Helper,
     _: &Handlebars,

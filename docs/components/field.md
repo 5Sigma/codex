@@ -61,3 +61,35 @@ The type name of the field. This can be omitted if not applicable.
 </Field>
 
 
+```HTML
+<Field 
+    name="Required Field" 
+    type="String" 
+    required="true">
+    A Field that is marked as required
+</Field>
+```
+
+<Field 
+    name="Required Field" 
+    type="String" 
+    required="true">
+    A Field that is marked as required
+</Field>
+
+
+```HTML
+<Field 
+    name="Optional Field" 
+    type="String" 
+    optional="true">
+    A Field that is marked as optional
+</Field>
+```
+
+<Field 
+    name="Required Field" 
+    type="String" 
+    optional="true">
+    A Field that is marked as optional
+</Field>

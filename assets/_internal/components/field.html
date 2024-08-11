@@ -13,12 +13,13 @@
         </span>
       {{/if}}
       {{#if required}}
-        <span 
+        <span
           class="badge rounded-pill bg-danger">
           required
         </span>
-      {{else}}
-        <span 
+      {{/if}}
+      {{#if optional}}
+        <span
           class="badge rounded-pill bg-secondary">
           optional
         </span>
